@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "sdk_version": "0.23.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "miragio-cacupe-mcp",
+      "version": "0.1.0",
+      "title": "Miragio Cacupé — Relatório Semanal"
+    },
+    "tools": [
+      {
+        "name": "list_demandas",
+        "title": "List condominium demands",
+        "description": "List all demands from the Miragio Cacupé condominium tracked in the Notion database. Supports optional filters.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "description": "Exact status to filter by, e.g. 'Concluído', 'Em andamento', 'Não iniciado', 'Agendado', 'Orçamento', 'Aguardando'."
+            },
+            "prioridade": {
+              "type": "string",
+              "description": "Priority level: 'Baixa', 'Média', 'Alta', or 'Urgente'."
+            },
+            "responsavel": {
+              "type": "string",
+              "description": "Filter by responsible person name (case-insensitive substring)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_weekly_summary",
+        "title": "Weekly summary of demands",
+        "description": "Return an executive summary with KPIs (total, completed, in progress, pending, urgent), plus counts by responsible, status and category for the Miragio Cacupé condominium.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_priority_demandas",
+        "title": "High-priority open demands",
+        "description": "List only the demands classified as 'Alta' or 'Urgente' that are not yet completed.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
