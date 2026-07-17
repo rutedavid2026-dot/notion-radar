@@ -1,7 +1,7 @@
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, History } from "lucide-react";
 import { z } from "zod";
 import { getDemandas } from "@/lib/notion.functions";
 import {
@@ -18,6 +18,7 @@ import { Charts } from "@/components/report/Charts";
 import { DemandasTable } from "@/components/report/DemandasTable";
 import { PrioridadesList } from "@/components/report/PrioridadesList";
 import { GlobalFilters } from "@/components/report/GlobalFilters";
+import { SalvarSemanaButton } from "@/components/report/SalvarSemanaButton";
 
 const demandasQueryOptions = queryOptions({
   queryKey: ["notion", "demandas"],
@@ -126,6 +127,16 @@ function ReportPage() {
           ultimaAtualizacao={ultimaAtualizacao}
           resumo={resumo}
         />
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link
+            to="/semanas"
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
+          >
+            <History className="h-4 w-4" /> Semanas anteriores
+          </Link>
+          <SalvarSemanaButton />
+        </div>
 
         <GlobalFilters
           filters={filters}
