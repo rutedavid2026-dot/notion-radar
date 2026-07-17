@@ -81,15 +81,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Relatório semanal de demandas do condomínio Miragio Cacupé com KPIs, gráficos e detalhamento em tempo real.",
+          "Relatório semanal de demandas do condomínio Miragio Cacupé, com KPIs, gráficos e detalhamento em tempo real via Notion.",
       },
       { property: "og:title", content: "Relatório Semanal — Miragio Cacupé" },
       {
         property: "og:description",
-        content: "Acompanhamento semanal de demandas do condomínio.",
+        content: "Relatório semanal de demandas do condomínio Miragio Cacupé, com KPIs, gráficos e detalhamento em tempo real via Notion.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Relatório Semanal — Miragio Cacupé" },
+      { name: "twitter:description", content: "Relatório semanal de demandas do condomínio Miragio Cacupé, com KPIs, gráficos e detalhamento em tempo real via Notion." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/55786090-6ec2-4bac-9682-0a760bbd138f/id-preview-27c0866f--bafb16ed-0aab-45e9-a1ad-9638356ab934.lovable.app-1784292718311.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/55786090-6ec2-4bac-9682-0a760bbd138f/id-preview-27c0866f--bafb16ed-0aab-45e9-a1ad-9638356ab934.lovable.app-1784292718311.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
