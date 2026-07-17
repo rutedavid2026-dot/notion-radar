@@ -28,7 +28,7 @@ export function GlobalFilters({
 
   const update = (patch: Partial<Filters>) => {
     navigate({
-      search: (prev) => ({ ...(prev as Filters), ...patch }),
+      search: (prev: Filters) => ({ ...prev, ...patch }),
     });
   };
 
