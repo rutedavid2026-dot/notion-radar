@@ -70,7 +70,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Relatório Semanal — Miragio Cacupé" },
       {
         property: "og:description",
-        content: "Acompanhamento semanal de demandas do condomínio.",
+        content: "Relatório semanal de demandas do condomínio Miragio Cacupé, com KPIs, gráficos e detalhamento em tempo real via Notion.",
       },
     ],
   }),
