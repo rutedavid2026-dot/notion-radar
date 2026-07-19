@@ -47,12 +47,37 @@ const PRIORIDADE_COLORS: Record<string, string> = {
 const BAR_COLOR = "#173F35";
 const LINE_COLOR = "#7A2E3A";
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({
+  title,
+  height = 260,
+  children,
+}: {
+  title: string;
+  height?: number;
+  children: React.ReactNode;
+}) {
   return (
     <div className="bg-card rounded-xl border p-5 shadow-sm">
       <h3 className="text-foreground text-sm font-semibold">{title}</h3>
-      <div className="mt-4 h-[260px] w-full">{children}</div>
+      <div className="mt-4 w-full" style={{ height }}>
+        {children}
+      </div>
     </div>
+  );
+}
+
+// Tick customizado pro eixo de categorias (nomes de responsável) — o tick
+// padrão do recharts quebra rótulos com espaço em múltiplas linhas quando
+// não cabem na largura, o que sobrepõe o texto da barra vizinha quando há
+// muitas categorias. Renderiza sempre uma linha só, truncando com "…".
+type CategoryTickProps = { x?: number; y?: number; payload?: { value: string } };
+function TruncatedCategoryTick({ x = 0, y = 0, payload }: CategoryTickProps) {
+  const label = payload?.value ?? "";
+  const truncated = label.length > 20 ? `${label.slice(0, 19)}…` : label;
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" fontSize={12} fill="#6b7280">
+      {truncated}
+    </text>
   );
 }
 
@@ -167,12 +192,21 @@ export function Charts({ rows, allRows }: { rows: Demanda[]; allRows: Demanda[] 
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Demandas por responsável">
+        <ChartCard
+          title="Demandas por responsável"
+          height={Math.max(260, responsavelData.length * 32)}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={responsavelData} layout="vertical" margin={{ left: 40 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis type="number" allowDecimals={false} />
-              <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={110}
+                interval={0}
+                tick={<TruncatedCategoryTick />}
+              />
               <Tooltip />
               <Bar dataKey="total" fill={BAR_COLOR} radius={[0, 4, 4, 0]} />
             </BarChart>
