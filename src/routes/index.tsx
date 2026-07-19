@@ -15,11 +15,12 @@ import {
   SEMANA_TODAS,
   type Filters,
 } from "@/lib/report-utils";
+import { Masthead } from "@/components/report/Masthead";
 import { ReportHeader } from "@/components/report/ReportHeader";
 import { KpiCards } from "@/components/report/KpiCards";
 import { Charts } from "@/components/report/Charts";
-import { DemandasTable } from "@/components/report/DemandasTable";
-import { PrioridadesList } from "@/components/report/PrioridadesList";
+import { ResumoExecutivo } from "@/components/report/ResumoExecutivo";
+import { DemandaSectionTable } from "@/components/report/DemandaSectionTable";
 import { GlobalFilters } from "@/components/report/GlobalFilters";
 
 const demandasQueryOptions = queryOptions({
@@ -135,6 +136,21 @@ function ReportPage() {
     return { total: filtered.length, concluidas, andamento, pendentes, urgentes };
   }, [filtered]);
 
+  const altas = useMemo(
+    () => filtered.filter((r) => r.prioridade === "Alta" && r.status !== "Concluído").length,
+    [filtered],
+  );
+
+  const abertas = useMemo(() => filtered.filter((r) => r.status !== "Concluído"), [filtered]);
+  const prioritarias = useMemo(
+    () => abertas.filter((r) => r.prioridade === "Urgente" || r.prioridade === "Alta"),
+    [abertas],
+  );
+  const operacionais = useMemo(
+    () => abertas.filter((r) => r.prioridade !== "Urgente" && r.prioridade !== "Alta"),
+    [abertas],
+  );
+
   const condominioLabel =
     filters.condominio || (condominios.length === 1 ? condominios[0] : "Todos os condomínios");
 
@@ -146,11 +162,11 @@ function ReportPage() {
     );
   }, [allRows]);
 
-  const ultimaAtualizacaoExibida = usaFotografia
+  const referencia = usaFotografia
     ? (historicoQuery.data?.capturadoEm ?? null)
     : ultimaAtualizacaoLive;
 
-  const resumo = buildResumo(kpis, !isTodas);
+  const descricao = `Este follow-up apresenta a leitura consolidada das demandas do ${condominioLabel}, com foco em demanda, data de criação, status e última ação registrada. Foram consideradas ${kpis.total} tarefa${kpis.total === 1 ? "" : "s"} no total; as concluídas aparecem nos gráficos e totais, e o detalhamento operacional prioriza as demandas ainda em movimento.`;
 
   return (
     <main className="bg-background min-h-screen">
@@ -168,12 +184,14 @@ function ReportPage() {
           </div>
         )}
 
+        <Masthead condominio={condominioLabel} />
+
         <ReportHeader
           condominio={condominioLabel}
           semanaInicio={resolvedStart}
           semanaFim={resolvedEnd}
-          ultimaAtualizacao={ultimaAtualizacaoExibida}
-          resumo={resumo}
+          referencia={referencia}
+          descricao={descricao}
           congelado={usaFotografia}
         />
 
@@ -188,34 +206,35 @@ function ReportPage() {
 
         <Charts rows={filtered} allRows={allRows} />
 
-        <PrioridadesList rows={filtered} />
+        <ResumoExecutivo
+          emMovimento={kpis.andamento + kpis.pendentes}
+          urgentes={kpis.urgentes}
+          altas={altas}
+        />
 
-        <DemandasTable rows={filtered} />
+        <DemandaSectionTable
+          title="Demandas em aberto - prioridade urgente e alta"
+          description="Detalhamento das demandas que exigem acompanhamento mais próximo. As demandas concluídas não foram detalhadas nesta seção."
+          rows={prioritarias}
+        />
 
-        <footer className="text-muted-foreground pt-4 text-center text-xs">
-          {usaFotografia
-            ? "Dados congelados na fotografia semanal (Google Sheets)."
-            : "Dados consumidos em tempo real via Notion API."}
+        <DemandaSectionTable
+          title="Demandas em aberto - acompanhamento operacional"
+          description="Demais demandas em andamento, não iniciadas, agendadas ou aguardando providências."
+          rows={operacionais}
+        />
+
+        <footer className="border-brand-border flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-xs">
+          <span className="text-muted-foreground">
+            Equipe Síndicas Profissionais | Follow-up Semanal
+          </span>
+          <span className="text-muted-foreground">
+            {usaFotografia
+              ? "Dados congelados na fotografia semanal (Google Sheets)."
+              : "Dados consumidos em tempo real via Notion API."}
+          </span>
         </footer>
       </div>
     </main>
   );
-}
-
-function buildResumo(
-  k: { total: number; concluidas: number; andamento: number; pendentes: number; urgentes: number },
-  temPeriodo: boolean,
-): string {
-  if (k.total === 0) {
-    return "Sem demandas registradas para os filtros selecionados.";
-  }
-  const escopo = temPeriodo ? "nesta semana" : "no período consolidado";
-  const parts = [
-    `${k.total} demanda${k.total === 1 ? "" : "s"} ${escopo}`,
-    `${k.concluidas} concluída${k.concluidas === 1 ? "" : "s"}`,
-    `${k.andamento} em andamento`,
-    `${k.pendentes} pendente${k.pendentes === 1 ? "" : "s"}`,
-  ];
-  if (k.urgentes > 0) parts.push(`${k.urgentes} urgente${k.urgentes === 1 ? "" : "s"} em aberto`);
-  return parts.join(" · ") + ".";
 }

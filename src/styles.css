@@ -59,6 +59,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-brand-cream: var(--brand-cream);
+  --color-brand-border: var(--brand-border);
+  --color-brand-green: var(--brand-green);
+  --color-brand-maroon: var(--brand-maroon);
 }
 
 :root {
@@ -95,9 +99,19 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+  /* Identidade "Equipe Síndicas" (extraída do PDF miragio-cacupe-premium.pdf) */
+  --brand-cream: oklch(0.9603 0.0136 78.26);
+  --brand-border: oklch(0.8683 0.0249 77.44);
+  --brand-green: oklch(0.3357 0.0486 174.3);
+  --brand-maroon: oklch(0.4133 0.1062 13.44);
 }
 
 .dark {
+  /* Marca é fixa (papel de relatório), não varia com o tema */
+  --brand-cream: oklch(0.9603 0.0136 78.26);
+  --brand-border: oklch(0.8683 0.0249 77.44);
+  --brand-green: oklch(0.3357 0.0486 174.3);
+  --brand-maroon: oklch(0.4133 0.1062 13.44);
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
