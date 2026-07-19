@@ -11,7 +11,6 @@ import {
   formatDatePt,
   brToIso,
   isoToBrDash,
-  listWeekOptions,
   currentWeekNumber,
   SEMANA_TODAS,
 } from "@/lib/report-utils";
@@ -24,14 +23,17 @@ type SearchState = {
   status: string;
 };
 
+type WeekOption = { n: number; start: string; end: string };
+
 type Props = {
   search: SearchState;
+  weekOptions: WeekOption[];
   condominios: string[];
   responsaveis: string[];
   statuses: string[];
 };
 
-export function GlobalFilters({ search, condominios, responsaveis, statuses }: Props) {
+export function GlobalFilters({ search, weekOptions, condominios, responsaveis, statuses }: Props) {
   const navigate = useNavigate({ from: "/" });
 
   const update = (patch: Partial<SearchState>) => {
@@ -53,7 +55,6 @@ export function GlobalFilters({ search, condominios, responsaveis, statuses }: P
 
   const ALL = "__all__";
 
-  const weekOptions = listWeekOptions();
   const currentWeek = currentWeekNumber();
   const isTodas = search.semanainicio === SEMANA_TODAS;
   const selectedWeekN = isTodas

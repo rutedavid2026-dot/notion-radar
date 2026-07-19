@@ -90,13 +90,6 @@ export function currentWeekNumber(): number {
   return Math.max(1, Math.floor(diffDays / 7) + 1);
 }
 
-// Lista pra popular o dropdown de semanas: da semana 1 até a próxima semana
-// (permite montar o link da newsletter de sexta-feira com antecedência).
-export function listWeekOptions(): Array<{ n: number; start: string; end: string }> {
-  const upTo = currentWeekNumber() + 1;
-  return Array.from({ length: upTo }, (_, i) => ({ n: i + 1, ...weekRange(i + 1) }));
-}
-
 export function brToIso(br: string): string {
   const [d, m, y] = br.split("-");
   return `${y}-${m}-${d}`;

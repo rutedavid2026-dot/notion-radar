@@ -1,10 +1,10 @@
 import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { getDemandas } from "@/lib/notion.functions";
-import { getHistoricoSemana } from "@/lib/sheets.functions";
+import { getHistoricoSemana, getSemanasDisponiveis } from "@/lib/sheets.functions";
 import {
   applyFilters,
   brToIso,
@@ -35,6 +35,12 @@ const historicoQueryOptions = (semanaInicio: string) =>
     queryFn: () => getHistoricoSemana({ data: { semanaInicio } }),
     staleTime: 60_000,
   });
+
+const semanasQueryOptions = queryOptions({
+  queryKey: ["sheets", "semanas"],
+  queryFn: () => getSemanasDisponiveis(),
+  staleTime: 60_000,
+});
 
 // Fica como string crua (dd-mm-aaaa, "todas" ou "") no estado de busca — não
 // converte para ISO aqui. Se convertesse aqui, o TanStack Router serializaria o
@@ -95,7 +101,8 @@ function ReportPage() {
   const allRows = result.data;
 
   const isTodas = search.semanainicio === SEMANA_TODAS;
-  const currentRange = useMemo(() => weekRange(currentWeekNumber()), []);
+  const currentWeekN = useMemo(() => currentWeekNumber(), []);
+  const currentRange = useMemo(() => weekRange(currentWeekN), [currentWeekN]);
   const resolvedStart = isTodas
     ? null
     : search.semanainicio
@@ -112,8 +119,27 @@ function ReportPage() {
     enabled: !!resolvedStart,
   });
 
+  const semanasQuery = useQuery(semanasQueryOptions);
+
+  // O dropdown só deve oferecer semanas que já têm fotografia na planilha —
+  // exceto a semana atual (calculada pela âncora), que sempre entra na lista
+  // mesmo sem fotografia ainda, pra sempre haver uma opção "selecionada" no
+  // primeiro acesso (antes da captura de sexta-feira).
+  const weekOptions = useMemo(() => {
+    const list = semanasQuery.data ?? [];
+    if (list.some((w) => w.n === currentWeekN)) return list;
+    return [...list, { n: currentWeekN, ...currentRange }].sort((a, b) => a.n - b.n);
+  }, [semanasQuery.data, currentWeekN, currentRange]);
+
+  // Enquanto uma semana recém-selecionada ainda está sendo buscada na
+  // planilha (chave de query nova, sem dado em cache), mostra um estado de
+  // carregamento em vez de piscar os dados ao vivo da semana anterior.
+  const isLoadingFoto = historicoQuery.isLoading;
   const usaFotografia = !isTodas && (historicoQuery.data?.data.length ?? 0) > 0;
-  const baseRows = usaFotografia ? historicoQuery.data!.data : allRows;
+  const baseRows = useMemo(
+    () => (isLoadingFoto ? [] : usaFotografia ? historicoQuery.data!.data : allRows),
+    [isLoadingFoto, usaFotografia, historicoQuery.data, allRows],
+  );
 
   const condominios = useMemo(() => uniqueSorted(allRows.map((r) => r.condominio)), [allRows]);
   const responsaveis = useMemo(() => uniqueSorted(allRows.map((r) => r.responsavel)), [allRows]);
@@ -197,32 +223,42 @@ function ReportPage() {
 
         <GlobalFilters
           search={search}
+          weekOptions={weekOptions}
           condominios={condominios}
           responsaveis={responsaveis}
           statuses={statuses}
         />
 
-        <KpiCards {...kpis} />
+        {isLoadingFoto ? (
+          <div className="bg-card text-muted-foreground flex flex-col items-center justify-center gap-3 rounded-xl border py-16">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <p className="text-sm">Carregando fotografia da semana selecionada…</p>
+          </div>
+        ) : (
+          <>
+            <KpiCards {...kpis} />
 
-        <Charts rows={filtered} allRows={allRows} />
+            <Charts rows={filtered} allRows={allRows} />
 
-        <ResumoExecutivo
-          emMovimento={kpis.andamento + kpis.pendentes}
-          urgentes={kpis.urgentes}
-          altas={altas}
-        />
+            <ResumoExecutivo
+              emMovimento={kpis.andamento + kpis.pendentes}
+              urgentes={kpis.urgentes}
+              altas={altas}
+            />
 
-        <DemandaSectionTable
-          title="Demandas em aberto - prioridade urgente e alta"
-          description="Detalhamento das demandas que exigem acompanhamento mais próximo. As demandas concluídas não foram detalhadas nesta seção."
-          rows={prioritarias}
-        />
+            <DemandaSectionTable
+              title="Demandas em aberto - prioridade urgente e alta"
+              description="Detalhamento das demandas que exigem acompanhamento mais próximo. As demandas concluídas não foram detalhadas nesta seção."
+              rows={prioritarias}
+            />
 
-        <DemandaSectionTable
-          title="Demandas em aberto - acompanhamento operacional"
-          description="Demais demandas em andamento, não iniciadas, agendadas ou aguardando providências."
-          rows={operacionais}
-        />
+            <DemandaSectionTable
+              title="Demandas em aberto - acompanhamento operacional"
+              description="Demais demandas em andamento, não iniciadas, agendadas ou aguardando providências."
+              rows={operacionais}
+            />
+          </>
+        )}
 
         <footer className="border-brand-border flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-xs">
           <span className="text-muted-foreground">
