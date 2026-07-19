@@ -17,7 +17,9 @@ const PRIORIDADE_STYLES: Record<string, string> = {
 export function StatusBadge({ value }: { value: string }) {
   const cls = STATUS_STYLES[value] ?? "bg-slate-100 text-slate-700 border-slate-200";
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${cls}`}>
+    <span
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${cls}`}
+    >
       {value}
     </span>
   );
@@ -26,7 +28,9 @@ export function StatusBadge({ value }: { value: string }) {
 export function PrioridadeBadge({ value }: { value: string }) {
   const cls = PRIORIDADE_STYLES[value] ?? "bg-slate-100 text-slate-700 border-slate-200";
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${cls}`}>
+    <span
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${cls}`}
+    >
       {value}
     </span>
   );

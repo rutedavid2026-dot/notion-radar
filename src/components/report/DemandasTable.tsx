@@ -59,11 +59,41 @@ export function DemandasTable({ rows }: { rows: Demanda[] }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableHead label="Demanda" k="demanda" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-              <SortableHead label="Responsável" k="responsavel" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-              <SortableHead label="Criada em" k="criadaEm" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-              <SortableHead label="Status" k="status" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-              <SortableHead label="Última atualização" k="ultimaAtualizacao" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+              <SortableHead
+                label="Demanda"
+                k="demanda"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onClick={toggleSort}
+              />
+              <SortableHead
+                label="Responsável"
+                k="responsavel"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onClick={toggleSort}
+              />
+              <SortableHead
+                label="Criada em"
+                k="criadaEm"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onClick={toggleSort}
+              />
+              <SortableHead
+                label="Status"
+                k="status"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onClick={toggleSort}
+              />
+              <SortableHead
+                label="Última atualização"
+                k="ultimaAtualizacao"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onClick={toggleSort}
+              />
               <TableHead>Observações</TableHead>
             </TableRow>
           </TableHeader>
@@ -91,9 +121,7 @@ export function DemandasTable({ rows }: { rows: Demanda[] }) {
                     {formatDateTimePt(r.ultimaAtualizacao)}
                   </TableCell>
                   <TableCell className="text-muted-foreground max-w-[300px] text-xs">
-                    <div className="line-clamp-2">
-                      {r.historico || r.ultimaAcao || "—"}
-                    </div>
+                    <div className="line-clamp-2">{r.historico || r.ultimaAcao || "—"}</div>
                   </TableCell>
                 </TableRow>
               ))

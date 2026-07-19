@@ -5,7 +5,9 @@ import { PrioridadeBadge, StatusBadge } from "./StatusBadge";
 
 export function PrioridadesList({ rows }: { rows: Demanda[] }) {
   const items = rows
-    .filter((r) => (r.prioridade === "Alta" || r.prioridade === "Urgente") && r.status !== "Concluído")
+    .filter(
+      (r) => (r.prioridade === "Alta" || r.prioridade === "Urgente") && r.status !== "Concluído",
+    )
     .sort((a, b) => (a.prioridade === "Urgente" && b.prioridade !== "Urgente" ? -1 : 1));
 
   return (

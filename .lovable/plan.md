@@ -1,24 +1,24 @@
-
 ## Fonte de dados
 
 Database Notion: **Miragio Cacupé - Gestão em Movimento** (`2113eaf518c583049f9a01672a68107f`).
 
 Propriedades detectadas e mapeamento:
 
-| Notion | Uso no relatório |
-|---|---|
-| Demanda (title) | Nome da demanda |
-| Pessoa (rich_text) | Responsável |
-| Status (select) | Status — Concluído / Em andamento / Não iniciado / Agendado / Orçamento / Aguardando |
-| Prioridade (select) | Baixa / Média / Alta / Urgente |
-| Condomínio (select) | Filtro Condomínio |
-| Área (rich_text) | Categoria |
-| Criada em (date) | Data de criação / cálculo da semana |
-| Última Ação (rich_text) | Última atualização (texto) |
-| Histórico (rich_text) | Observações |
-| `last_edited_time` (sistema) | Data real da última atualização |
+| Notion                       | Uso no relatório                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------------------ |
+| Demanda (title)              | Nome da demanda                                                                      |
+| Pessoa (rich_text)           | Responsável                                                                          |
+| Status (select)              | Status — Concluído / Em andamento / Não iniciado / Agendado / Orçamento / Aguardando |
+| Prioridade (select)          | Baixa / Média / Alta / Urgente                                                       |
+| Condomínio (select)          | Filtro Condomínio                                                                    |
+| Área (rich_text)             | Categoria                                                                            |
+| Criada em (date)             | Data de criação / cálculo da semana                                                  |
+| Última Ação (rich_text)      | Última atualização (texto)                                                           |
+| Histórico (rich_text)        | Observações                                                                          |
+| `last_edited_time` (sistema) | Data real da última atualização                                                      |
 
 Mapeamento de status para KPIs:
+
 - **Concluídas**: Concluído
 - **Em andamento**: Em andamento, Agendado, Orçamento
 - **Pendentes**: Não iniciado, Aguardando
@@ -36,6 +36,7 @@ Mapeamento de status para KPIs:
 ## Rota
 
 `src/routes/index.tsx` (substitui placeholder):
+
 - `loader` faz `ensureQueryData(demandasQueryOptions)`.
 - Componente usa `useSuspenseQuery` + filtros locais via search params (`validateSearch` + `zodValidator`) para: `condominio`, `semana` (ISO da segunda-feira), `responsavel`, `status`. Alterar filtro atualiza URL → re-render de KPIs/gráficos/tabela.
 - `head()` com título/description próprios ("Relatório Semanal — Miragio Cacupé").
@@ -58,6 +59,7 @@ Todo cálculo (KPIs, agrupamentos, evolução) é `useMemo` sobre os dados filtr
 ## Estilo
 
 Design moderno e limpo:
+
 - Tema claro com acentos por status (verde/azul/cinza/laranja/vermelho) via tokens semânticos em `src/styles.css` (nada de cores hard-coded nos componentes).
 - Tipografia Inter (link no `__root.tsx` head).
 - Grid responsivo (mobile: cards empilhados; desktop: 4 col KPIs, 2 col gráficos).

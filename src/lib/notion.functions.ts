@@ -24,8 +24,13 @@ export type GetDemandasResult = {
 function richText(prop: any): string {
   if (!prop) return "";
   const arr = prop.rich_text ?? prop.title ?? [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return arr.map((t: any) => t.plain_text ?? "").join("").trim();
+  return (
+    arr
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((t: any) => t.plain_text ?? "")
+      .join("")
+      .trim()
+  );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

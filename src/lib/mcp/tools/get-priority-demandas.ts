@@ -15,8 +15,7 @@ export default defineTool({
     }
     const rows = data
       .filter(
-        (r) =>
-          (r.prioridade === "Alta" || r.prioridade === "Urgente") && r.status !== "Concluído",
+        (r) => (r.prioridade === "Alta" || r.prioridade === "Urgente") && r.status !== "Concluído",
       )
       .sort((a) => (a.prioridade === "Urgente" ? -1 : 1));
     return {

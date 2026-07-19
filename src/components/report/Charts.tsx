@@ -29,13 +29,7 @@ const STATUS_COLORS: Record<string, string> = {
 const BAR_COLOR = "#6366f1";
 const LINE_COLOR = "#8b5cf6";
 
-function ChartCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-card rounded-xl border p-5 shadow-sm">
       <h3 className="text-foreground text-sm font-semibold">{title}</h3>
@@ -54,17 +48,13 @@ export function Charts({ rows, allRows }: { rows: Demanda[]; allRows: Demanda[] 
   const responsavelData = useMemo(() => {
     const map = new Map<string, number>();
     rows.forEach((r) => map.set(r.responsavel, (map.get(r.responsavel) ?? 0) + 1));
-    return Array.from(map, ([name, total]) => ({ name, total })).sort(
-      (a, b) => b.total - a.total,
-    );
+    return Array.from(map, ([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
   }, [rows]);
 
   const categoriaData = useMemo(() => {
     const map = new Map<string, number>();
     rows.forEach((r) => map.set(r.area, (map.get(r.area) ?? 0) + 1));
-    return Array.from(map, ([name, total]) => ({ name, total })).sort(
-      (a, b) => b.total - a.total,
-    );
+    return Array.from(map, ([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
   }, [rows]);
 
   const evolucaoData = useMemo(() => {
@@ -100,10 +90,7 @@ export function Charts({ rows, allRows }: { rows: Demanda[]; allRows: Demanda[] 
               label={(entry) => `${entry.value}`}
             >
               {statusData.map((entry) => (
-                <Cell
-                  key={entry.name}
-                  fill={STATUS_COLORS[entry.name] ?? "#64748b"}
-                />
+                <Cell key={entry.name} fill={STATUS_COLORS[entry.name] ?? "#64748b"} />
               ))}
             </Pie>
             <Tooltip />
