@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getCondominiosRegistry } from "./sheets.functions";
+import { slugify } from "./report-utils";
 
 export type Demanda = {
   id: string;
@@ -9,15 +11,29 @@ export type Demanda = {
   condominio: string;
   area: string;
   criadaEm: string | null;
-  ultimaAcao: string;
-  historico: string;
   ultimaAtualizacao: string;
+  historico: string;
+  dataUltimaEdicao: string;
   url: string;
+  ordem: number | null;
+  previsao: string | null;
+  dataPrevista: string | null;
+  concluidoEm: string | null;
 };
 
 export type GetDemandasResult = {
   data: Demanda[];
   error: string | null;
+};
+
+export type CondominioFetchError = {
+  condominio: string;
+  error: string;
+};
+
+export type GetAllDemandasResult = {
+  data: Demanda[];
+  errors: CondominioFetchError[];
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,6 +54,138 @@ function selectName(prop: any): string {
   return prop?.select?.name ?? "";
 }
 
+// "Status" pode ser um select clássico ou o tipo "status" mais novo do Notion
+// (ex.: Vivendas Home Club) — o shape do JSON muda (`prop.status.name` em vez
+// de `prop.select.name`).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function statusValue(prop: any): string {
+  return prop?.status?.name ?? prop?.select?.name ?? "";
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function multiSelectJoined(prop: any): string {
+  if (!Array.isArray(prop?.multi_select)) return "";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return prop.multi_select.map((s: any) => s.name).join(", ");
+}
+
+// Algumas bases (ex.: Vivendas Home Club) usam "Prioridade" como
+// multi-seleção — junta os nomes numa string única ("Alta, Grande
+// Investimento") pra manter o tipo `Demanda.prioridade` compatível; use
+// `prioridadeList()` de report-utils.ts pra checar pertencimento.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function prioridadeValue(prop: any): string {
+  if (!prop) return "";
+  return multiSelectJoined(prop) || prop.select?.name || "";
+}
+
+// "Responsável"/"Pessoa" pode ser texto, pessoa (people), select ou
+// multi-seleção dependendo do condomínio — normaliza pra string única.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function personValue(prop: any): string {
+  if (!prop) return "";
+  if (Array.isArray(prop.people)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return prop.people.map((p: any) => p.name ?? "").join(", ");
+  }
+  return multiSelectJoined(prop) || prop.select?.name || richText(prop);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function numberValue(prop: any): number | null {
+  return typeof prop?.number === "number" ? prop.number : null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dateValue(prop: any): string | null {
+  return prop?.date?.start ?? null;
+}
+
+// "Criada em"/"Criado em" pode ser um campo de data manual ou o
+// created_time automático do Notion (shape diferente: string direta, sem
+// `.date.start`).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function createdValue(prop: any): string | null {
+  if (!prop) return null;
+  if (typeof prop.created_time === "string") return prop.created_time;
+  return prop.date?.start ?? null;
+}
+
+async function fetchDemandasFromDb(
+  token: string,
+  dbId: string,
+  condominioOverride?: string,
+): Promise<GetDemandasResult> {
+  try {
+    const all: Demanda[] = [];
+    let cursor: string | undefined;
+    let hasMore = true;
+
+    while (hasMore) {
+      const body: Record<string, unknown> = { page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+
+      const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Notion-Version": "2022-06-28",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        return {
+          data: [],
+          error: `Notion API ${res.status}: ${txt.slice(0, 300)}`,
+        };
+      }
+
+      const json = await res.json();
+
+      for (const page of json.results ?? []) {
+        const p = page.properties ?? {};
+        all.push({
+          id: page.id,
+          demanda:
+            richText(p["Demanda"]) ||
+            richText(p["Tarefas"]) ||
+            richText(p["TAREFAS"]) ||
+            "(sem título)",
+          responsavel: personValue(p["Pessoa"]) || personValue(p["Responsável"]) || "Não atribuído",
+          status: statusValue(p["Status"]) || "Não iniciado",
+          prioridade: prioridadeValue(p["Prioridade"]) || "Baixa",
+          condominio: condominioOverride || selectName(p["Condomínio"]) || "—",
+          area: richText(p["Área"]) || multiSelectJoined(p["Setor/Demanda"]) || "Sem categoria",
+          criadaEm: createdValue(p["Criada em"]) ?? createdValue(p["Criado em"]),
+          ultimaAtualizacao: richText(p["Última Atualização"]),
+          historico: richText(p["Histórico"]) || richText(p["Histórico/Evidências"]),
+          dataUltimaEdicao: page.last_edited_time,
+          url: page.url,
+          ordem: numberValue(p["Ordem"]),
+          previsao: dateValue(p["Previsão"]),
+          dataPrevista: dateValue(p["Data Prevista"]),
+          concluidoEm: dateValue(p["Concluído em"]),
+        });
+      }
+
+      hasMore = json.has_more;
+      cursor = json.next_cursor ?? undefined;
+    }
+
+    return { data: all, error: null };
+  } catch (e) {
+    return {
+      data: [],
+      error: e instanceof Error ? e.message : "Erro desconhecido ao consultar o Notion",
+    };
+  }
+}
+
+// Mantida para compatibilidade (lê só a database única via env var) — usada
+// enquanto um condomínio ainda não está cadastrado na planilha índice.
 export const getDemandas = createServerFn({ method: "GET" }).handler(
   async (): Promise<GetDemandasResult> => {
     const token = process.env.NOTION_API_KEY;
@@ -45,64 +193,94 @@ export const getDemandas = createServerFn({ method: "GET" }).handler(
     if (!token || !dbId) {
       return { data: [], error: "NOTION_API_KEY / NOTION_DATABASE_ID não configurados." };
     }
-
-    try {
-      const all: Demanda[] = [];
-      let cursor: string | undefined;
-      let hasMore = true;
-
-      while (hasMore) {
-        const body: Record<string, unknown> = { page_size: 100 };
-        if (cursor) body.start_cursor = cursor;
-
-        const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Notion-Version": "2022-06-28",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
-          const txt = await res.text();
-          return {
-            data: [],
-            error: `Notion API ${res.status}: ${txt.slice(0, 300)}`,
-          };
-        }
-
-        const json = await res.json();
-
-        for (const page of json.results ?? []) {
-          const p = page.properties ?? {};
-          all.push({
-            id: page.id,
-            demanda: richText(p["Demanda"]) || "(sem título)",
-            responsavel: richText(p["Pessoa"]) || "Não atribuído",
-            status: selectName(p["Status"]) || "Não iniciado",
-            prioridade: selectName(p["Prioridade"]) || "Baixa",
-            condominio: selectName(p["Condomínio"]) || "—",
-            area: richText(p["Área"]) || "Sem categoria",
-            criadaEm: p["Criada em"]?.date?.start ?? null,
-            ultimaAcao: richText(p["Última Ação"]),
-            historico: richText(p["Histórico"]),
-            ultimaAtualizacao: page.last_edited_time,
-            url: page.url,
-          });
-        }
-
-        hasMore = json.has_more;
-        cursor = json.next_cursor ?? undefined;
-      }
-
-      return { data: all, error: null };
-    } catch (e) {
-      return {
-        data: [],
-        error: e instanceof Error ? e.message : "Erro desconhecido ao consultar o Notion",
-      };
-    }
+    return fetchDemandasFromDb(token, dbId);
   },
 );
+
+// Fluxo padrão do relatório: descobre os condomínios cadastrados na planilha
+// índice e consulta a database Notion de cada um em paralelo. Se a planilha
+// índice ainda não tiver nenhuma linha, cai de volta pra database única (env
+// var), pra não quebrar o condomínio original enquanto os outros não são
+// cadastrados. Falha em uma database não derruba as demais — cada erro fica
+// isolado em `errors`, carimbado com o nome do condomínio.
+export const getAllDemandas = createServerFn({ method: "GET" }).handler(
+  async (): Promise<GetAllDemandasResult> => {
+    const token = process.env.NOTION_API_KEY;
+    if (!token) {
+      return { data: [], errors: [{ condominio: "—", error: "NOTION_API_KEY não configurada." }] };
+    }
+
+    const registry = await getCondominiosRegistry();
+    const entries =
+      registry.data.length > 0
+        ? registry.data.map((r) => ({ condominio: r.condominio, dbId: r.notionDatabaseId }))
+        : process.env.NOTION_DATABASE_ID
+          ? [{ condominio: "", dbId: process.env.NOTION_DATABASE_ID }]
+          : [];
+
+    if (entries.length === 0) {
+      return {
+        data: [],
+        errors: [
+          {
+            condominio: "—",
+            error: registry.error ?? "Nenhum condomínio cadastrado (planilha índice vazia).",
+          },
+        ],
+      };
+    }
+
+    const results = await Promise.all(
+      entries.map(async (entry) => ({
+        condominio: entry.condominio,
+        result: await fetchDemandasFromDb(token, entry.dbId, entry.condominio || undefined),
+      })),
+    );
+
+    const data: Demanda[] = [];
+    const errors: CondominioFetchError[] = [];
+    for (const { condominio, result } of results) {
+      if (result.error) {
+        errors.push({ condominio: condominio || "condomínio sem nome", error: result.error });
+        continue;
+      }
+      data.push(...result.data);
+    }
+
+    return { data, errors };
+  },
+);
+
+export type GetDemandasCondominioResult = GetDemandasResult & { condominio: string | null };
+
+// Fluxo por página de condomínio: resolve o slug da URL (ex.: "vivendas-home-club")
+// pra database Notion certa via planilha índice, e consulta só essa — não faz
+// sentido buscar todas as databases pra renderizar a página de uma só.
+export const getDemandasByCondominio = createServerFn({ method: "GET" })
+  .validator((input: unknown) => input as { slug: string })
+  .handler(async ({ data }): Promise<GetDemandasCondominioResult> => {
+    const token = process.env.NOTION_API_KEY;
+    if (!token) {
+      return { data: [], error: "NOTION_API_KEY não configurada.", condominio: null };
+    }
+
+    const registry = await getCondominiosRegistry();
+    const entry = registry.data.find((r) => slugify(r.condominio) === data.slug);
+
+    if (entry) {
+      const result = await fetchDemandasFromDb(token, entry.notionDatabaseId, entry.condominio);
+      return { ...result, condominio: entry.condominio };
+    }
+
+    // Planilha índice ainda vazia — cai pro fallback legado de database única
+    // (env var) e confirma que o nome do condomínio ali bate com o slug pedido.
+    if (registry.data.length === 0 && process.env.NOTION_DATABASE_ID) {
+      const result = await fetchDemandasFromDb(token, process.env.NOTION_DATABASE_ID);
+      const nomeReal = result.data[0]?.condominio ?? null;
+      if (nomeReal && slugify(nomeReal) === data.slug) {
+        return { ...result, condominio: nomeReal };
+      }
+    }
+
+    return { data: [], error: `Condomínio "${data.slug}" não encontrado.`, condominio: null };
+  });

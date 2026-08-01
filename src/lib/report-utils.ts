@@ -1,13 +1,66 @@
 import type { Demanda } from "./notion.functions";
 
-export const STATUS_CONCLUIDO = ["Concluído"];
-export const STATUS_ANDAMENTO = ["Em andamento", "Agendado", "Orçamento"];
-export const STATUS_PENDENTE = ["Não iniciado", "Aguardando"];
+export const STATUS_CONCLUIDO = ["Concluído", "Feito"];
+export const STATUS_CANCELADO = ["Cancelado"];
+export const STATUS_ANDAMENTO = [
+  "Em andamento",
+  "Agendado",
+  "Orçamento",
+  "Orçando",
+  "Reaberto",
+  "Sempre",
+];
+export const STATUS_PENDENTE = [
+  "Não iniciado",
+  "Aguardando",
+  "Assembleia",
+  "Planejando",
+  "Atrasado",
+  "Parada",
+];
 
-export function statusBucket(s: string): "concluido" | "andamento" | "pendente" {
-  if (STATUS_CONCLUIDO.includes(s)) return "concluido";
-  if (STATUS_ANDAMENTO.includes(s)) return "andamento";
+export type StatusBucket = "concluido" | "cancelado" | "andamento" | "pendente";
+
+// Comparação sem distinguir maiúsculas/acentos: o mesmo status aparece com
+// grafias diferentes entre condomínios (ex.: Vivendas Home Club usa
+// "cancelado", "orcamento" sem cedilha, "orçando", "sempre" em minúsculas,
+// enquanto outras bases usam a forma capitalizada/acentuada).
+function statusIn(lista: string[], valor: string): boolean {
+  const alvo = normalizeForMatch(valor);
+  return lista.some((item) => normalizeForMatch(item) === alvo);
+}
+
+export function statusBucket(s: string): StatusBucket {
+  if (statusIn(STATUS_CONCLUIDO, s)) return "concluido";
+  if (statusIn(STATUS_CANCELADO, s)) return "cancelado";
+  if (statusIn(STATUS_ANDAMENTO, s)) return "andamento";
   return "pendente";
+}
+
+// Tarefas fechadas (concluídas ou canceladas) saem das listas de acompanhamento
+// operacional — não precisam mais de ação, independente do vocabulário de status
+// do condomínio de origem.
+export function isFechada(s: string): boolean {
+  const b = statusBucket(s);
+  return b === "concluido" || b === "cancelado";
+}
+
+// "Prioridade" e "Responsável" podem vir como multi-seleção do Notion (ex.:
+// "Alta, Grande Investimento" ou "Carina, Roberto") — normaliza pra lista
+// antes de checar pertencimento.
+export function splitLista(s: string): string[] {
+  return s
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+export function prioridadeList(p: string): string[] {
+  return splitLista(p);
+}
+
+export function temPrioridade(p: string, alvo: string): boolean {
+  return prioridadeList(p).includes(alvo);
 }
 
 // Returns ISO date (YYYY-MM-DD) of the Monday of the given date's week.
@@ -53,16 +106,16 @@ export function formatDateTimePt(iso: string | null | undefined): string {
 }
 
 export type Filters = {
-  condominio: string;
-  responsavel: string;
+  responsavel: string[];
   status: string;
 };
 
 export function applyFilters(rows: Demanda[], f: Filters): Demanda[] {
   return rows.filter((r) => {
-    if (f.condominio && !normalizeForMatch(r.condominio).includes(normalizeForMatch(f.condominio)))
-      return false;
-    if (f.responsavel && r.responsavel !== f.responsavel) return false;
+    if (f.responsavel.length > 0) {
+      const responsaveisDaLinha = splitLista(r.responsavel);
+      if (!f.responsavel.some((sel) => responsaveisDaLinha.includes(sel))) return false;
+    }
     if (f.status && r.status !== f.status) return false;
     return true;
   });
@@ -102,4 +155,20 @@ export function isoToBrDash(iso: string): string {
 
 export function normalizeForMatch(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+}
+
+// Slug amigável de um nome de condomínio (ex.: "Vivendas Home Club" →
+// "vivendas-home-club") — mesmo algoritmo usado pelo Apps Script
+// (nomeAbaAmigavel em apps-script/GerenciarCondominios.gs) pra nomear a aba
+// de histórico. Usado aqui pra resolver a URL /vivendas-home-club de volta
+// pro nome de exibição do condomínio.
+export function slugify(nome: string): string {
+  return (
+    nome
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-+|-+$)/g, "") || ""
+  );
 }

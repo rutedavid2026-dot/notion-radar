@@ -5,9 +5,9 @@ import getPriorityDemandas from "./tools/get-priority-demandas";
 
 export default defineMcp({
   name: "miragio-cacupe-mcp",
-  title: "Miragio Cacupé — Relatório Semanal",
-  version: "0.1.0",
+  title: "Equipe Síndicas — Relatório Semanal",
+  version: "0.2.0",
   instructions:
-    "Tools to inspect condominium demands from the Miragio Cacupé Notion database: list demands with filters, get a weekly executive summary with KPIs, and list high-priority open items.",
+    "Tools to inspect condominium demands from Notion across every condominium registered in the index sheet: list demands with filters (including by condominium), get a weekly executive summary with KPIs, and list high-priority open items.",
   tools: [listDemandas, getWeeklySummary, getPriorityDemandas],
 });

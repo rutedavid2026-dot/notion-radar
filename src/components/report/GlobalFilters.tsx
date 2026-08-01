@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { ChevronDown } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -6,17 +7,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
   formatDatePt,
   brToIso,
   isoToBrDash,
   currentWeekNumber,
+  splitLista,
   SEMANA_TODAS,
 } from "@/lib/report-utils";
 
 type SearchState = {
-  condominio: string;
   semanainicio: string;
   semanafim: string;
   responsavel: string;
@@ -28,29 +37,32 @@ type WeekOption = { n: number; start: string; end: string };
 type Props = {
   search: SearchState;
   weekOptions: WeekOption[];
-  condominios: string[];
   responsaveis: string[];
   statuses: string[];
 };
 
-export function GlobalFilters({ search, weekOptions, condominios, responsaveis, statuses }: Props) {
-  const navigate = useNavigate({ from: "/" });
+export function GlobalFilters({ search, weekOptions, responsaveis, statuses }: Props) {
+  const navigate = useNavigate({ from: "/$condominio" });
 
+  // resetScroll: false — trocar um filtro só atualiza os dados da página, não
+  // deve jogar o usuário de volta pro topo (ele pode estar olhando as tabelas
+  // mais abaixo quando muda o responsável, por exemplo).
   const update = (patch: Partial<SearchState>) => {
     navigate({
       search: (prev: SearchState) => ({ ...prev, ...patch }),
+      resetScroll: false,
     });
   };
 
   const clear = () =>
     navigate({
       search: () => ({
-        condominio: "",
         semanainicio: "",
         semanafim: "",
         responsavel: "",
         status: "",
       }),
+      resetScroll: false,
     });
 
   const ALL = "__all__";
@@ -66,25 +78,6 @@ export function GlobalFilters({ search, weekOptions, condominios, responsaveis, 
   return (
     <div className="bg-card rounded-xl border p-4 shadow-sm">
       <div className="flex flex-wrap items-end gap-3">
-        <FilterBlock label="Condomínio">
-          <Select
-            value={search.condominio || ALL}
-            onValueChange={(v) => update({ condominio: v === ALL ? "" : v })}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Todos</SelectItem>
-              {condominios.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FilterBlock>
-
         <FilterBlock label="Semana">
           <Select
             value={isTodas ? ALL : String(selectedWeekN)}
@@ -113,22 +106,11 @@ export function GlobalFilters({ search, weekOptions, condominios, responsaveis, 
         </FilterBlock>
 
         <FilterBlock label="Responsável">
-          <Select
-            value={search.responsavel || ALL}
-            onValueChange={(v) => update({ responsavel: v === ALL ? "" : v })}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Todos</SelectItem>
-              {responsaveis.map((r) => (
-                <SelectItem key={r} value={r}>
-                  {r}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <ResponsavelFilter
+            value={search.responsavel}
+            options={responsaveis}
+            onChange={(v) => update({ responsavel: v })}
+          />
         </FilterBlock>
 
         <FilterBlock label="Status">
@@ -166,5 +148,69 @@ function FilterBlock({ label, children }: { label: string; children: React.React
       </span>
       {children}
     </div>
+  );
+}
+
+type ResponsavelFilterProps = {
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+};
+
+// Cada demanda pode ter vários responsáveis (multi-seleção do Notion), então
+// o filtro também precisa permitir escolher mais de um — quem tiver
+// QUALQUER um dos selecionados aparece no relatório. A seleção é guardada na
+// URL como uma string separada por vírgula (mesma convenção usada em
+// `Demanda.responsavel`), sem precisar de serialização especial do router.
+function ResponsavelFilter({ value, options, onChange }: ResponsavelFilterProps) {
+  const selecionados = splitLista(value);
+
+  const toggle = (nome: string, marcado: boolean) => {
+    const proximos = marcado ? [...selecionados, nome] : selecionados.filter((s) => s !== nome);
+    onChange(proximos.join(","));
+  };
+
+  const label =
+    selecionados.length === 0
+      ? "Todos"
+      : selecionados.length === 1
+        ? selecionados[0]
+        : `${selecionados.length} selecionados`;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-[200px] justify-between font-normal"
+          title={selecionados.join(", ")}
+        >
+          <span className="truncate">{label}</span>
+          <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="max-h-[300px] w-[220px] overflow-y-auto">
+        <DropdownMenuItem
+          className="gap-2"
+          onSelect={(e) => e.preventDefault()}
+          onClick={() => onChange("")}
+        >
+          <Checkbox checked={selecionados.length === 0} className="pointer-events-none" />
+          Todos
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {options.map((nome) => (
+          <DropdownMenuItem
+            key={nome}
+            className="gap-2"
+            onSelect={(e) => e.preventDefault()}
+            onClick={() => toggle(nome, !selecionados.includes(nome))}
+          >
+            <Checkbox checked={selecionados.includes(nome)} className="pointer-events-none" />
+            {nome}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -6,22 +6,26 @@ type Kpi = {
 type Props = {
   total: number;
   concluidas: number;
+  canceladas: number;
   andamento: number;
   pendentes: number;
   urgentes: number;
 };
 
-export function KpiCards({ total, concluidas, andamento, pendentes, urgentes }: Props) {
+export function KpiCards({ total, concluidas, canceladas, andamento, pendentes, urgentes }: Props) {
   const kpis: Kpi[] = [
     { label: "Total de demandas", value: total },
     { label: "Concluídas", value: concluidas },
     { label: "Em andamento", value: andamento },
     { label: "Pendentes", value: pendentes },
     { label: "Urgentes", value: urgentes },
+    ...(canceladas > 0 ? [{ label: "Canceladas", value: canceladas }] : []),
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+    <div
+      className={`grid grid-cols-2 gap-3 md:grid-cols-3 ${kpis.length > 5 ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}
+    >
       {kpis.map((k) => (
         <div
           key={k.label}

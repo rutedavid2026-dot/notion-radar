@@ -2,7 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import type { Demanda } from "./notion.functions";
 
 const SPREADSHEET_ID = "1fEkPgTf6oGYknWEP6zzi8eyBTpoDDQR0goJg1D_Wed0";
-const HISTORICO_GID = "1546449563";
+// Aba de histórico usada enquanto a planilha índice não tem nenhum condomínio
+// cadastrado (compatibilidade com o deploy single-tenant original).
+const HISTORICO_GID_LEGADO = "1546449563";
 
 export type HistoricoResult = {
   data: Demanda[];
@@ -14,6 +16,17 @@ export type SemanaDisponivel = {
   n: number;
   start: string;
   end: string;
+};
+
+export type CondominioRegistroEntry = {
+  condominio: string;
+  notionDatabaseId: string;
+  historicoGid: string;
+};
+
+export type GetCondominiosRegistryResult = {
+  data: CondominioRegistroEntry[];
+  error: string | null;
 };
 
 // Parser CSV mínimo (RFC4180): trata campos entre aspas com vírgula, quebra de
@@ -60,6 +73,87 @@ function parseCsv(text: string): string[][] {
   return rows;
 }
 
+async function fetchCsv(spreadsheetId: string, gid: string): Promise<string[][]> {
+  const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Falha ao ler planilha: HTTP ${res.status}`);
+  }
+  return parseCsv(await res.text());
+}
+
+// Extrai o ID de database do Notion (32 hex chars, com ou sem hífens) de uma
+// URL colada na planilha índice.
+export function extractNotionDatabaseId(url: string): string | null {
+  const match = url.match(
+    /[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}/,
+  );
+  if (!match) return null;
+  return match[0].replace(/-/g, "");
+}
+
+function col(header: string[], ...names: string[]): number {
+  for (const name of names) {
+    const i = header.indexOf(name);
+    if (i !== -1) return i;
+  }
+  return -1;
+}
+
+// Mesmo algoritmo de report-utils.ts, duplicado de propósito — mantém este
+// arquivo livre de dependência de módulos "de UI" e evita qualquer risco de
+// import circular (report-utils.ts importa o tipo `Demanda` daqui).
+function slugify(nome: string): string {
+  return (
+    nome
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-+|-+$)/g, "") || ""
+  );
+}
+
+// Lê a planilha índice "base-gestao-em-movimento" (Condomínio | URL da
+// database Notion | GID da aba de histórico daquele condomínio). Linhas sem
+// condomínio, URL válida ou database Notion reconhecível são ignoradas em vez
+// de derrubar o carregamento inteiro.
+export const getCondominiosRegistry = createServerFn({ method: "GET" }).handler(
+  async (): Promise<GetCondominiosRegistryResult> => {
+    const spreadsheetId = process.env.REGISTRY_SPREADSHEET_ID;
+    if (!spreadsheetId) {
+      return { data: [], error: "REGISTRY_SPREADSHEET_ID não configurado." };
+    }
+    const gid = process.env.REGISTRY_GID ?? "0";
+
+    try {
+      const [header, ...body] = await fetchCsv(spreadsheetId, gid);
+      if (!header) return { data: [], error: null };
+
+      const iCondominio = col(header, "Condomínio", "Condominio");
+      const iUrl = col(header, "URL");
+      const iGid = col(header, "GID Histórico", "GID Historico", "Aba");
+
+      const data: CondominioRegistroEntry[] = [];
+      for (const r of body) {
+        const condominio = (r[iCondominio] ?? "").trim();
+        const url = (r[iUrl] ?? "").trim();
+        const historicoGid = (r[iGid] ?? "").trim();
+        if (!condominio || !url) continue;
+        const notionDatabaseId = extractNotionDatabaseId(url);
+        if (!notionDatabaseId) continue;
+        data.push({ condominio, notionDatabaseId, historicoGid });
+      }
+      return { data, error: null };
+    } catch (e) {
+      return {
+        data: [],
+        error: e instanceof Error ? e.message : "Erro desconhecido ao ler a planilha índice",
+      };
+    }
+  },
+);
+
 type RawRow = Demanda & {
   semanaInicio: string;
   semanaFim: string;
@@ -70,44 +164,83 @@ type RawRow = Demanda & {
 // Falhas de rede/HTTP lançam erro de verdade (em vez de um resultado "vazio")
 // para que o React Query aplique seu retry automático — não queremos que uma
 // falha transitória fique em cache como "nenhuma fotografia para esta semana".
-async function fetchHistoricoRows(): Promise<RawRow[]> {
-  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${HISTORICO_GID}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Falha ao ler planilha: HTTP ${res.status}`);
-  }
-  const text = await res.text();
-
-  const [header, ...body] = parseCsv(text);
+async function fetchHistoricoRows(gid: string): Promise<RawRow[]> {
+  const [header, ...body] = await fetchCsv(SPREADSHEET_ID, gid);
   if (!header) return [];
-  const col = (name: string) => header.indexOf(name);
+  const c = (name: string) => header.indexOf(name);
 
   return body
     .filter((r) => r.length > 1)
     .map((r) => ({
-      semanaInicio: r[col("SemanaInicio")] ?? "",
-      semanaFim: r[col("SemanaFim")] ?? "",
-      semanaN: Number(r[col("SemanaN")]),
-      capturadoEm: r[col("CapturadoEm")] ?? "",
-      id: r[col("PageId")] ?? "",
-      demanda: r[col("Demanda")] ?? "",
-      responsavel: r[col("Responsavel")] ?? "",
-      status: r[col("Status")] ?? "",
-      prioridade: r[col("Prioridade")] ?? "",
-      condominio: r[col("Condominio")] ?? "",
-      area: r[col("Area")] ?? "",
-      criadaEm: r[col("CriadaEm")] || null,
-      ultimaAcao: r[col("UltimaAcao")] ?? "",
-      historico: r[col("Historico")] ?? "",
-      ultimaAtualizacao: r[col("UltimaAtualizacao")] ?? "",
-      url: r[col("URL")] ?? "",
+      semanaInicio: r[c("SemanaInicio")] ?? "",
+      semanaFim: r[c("SemanaFim")] ?? "",
+      semanaN: Number(r[c("SemanaN")]),
+      capturadoEm: r[c("CapturadoEm")] ?? "",
+      id: r[c("PageId")] ?? "",
+      demanda: r[c("Demanda")] ?? "",
+      responsavel: r[c("Responsavel")] ?? "",
+      status: r[c("Status")] ?? "",
+      prioridade: r[c("Prioridade")] ?? "",
+      condominio: r[c("Condominio")] ?? "",
+      area: r[c("Area")] ?? "",
+      criadaEm: r[c("CriadaEm")] || null,
+      ultimaAtualizacao: r[c("UltimaAtualizacao")] ?? "",
+      historico: r[c("Historico")] ?? "",
+      dataUltimaEdicao: r[c("DataUltimaEdicao")] ?? "",
+      url: r[c("URL")] ?? "",
+      ordem: r[c("Ordem")] ? Number(r[c("Ordem")]) : null,
+      previsao: r[c("Previsao")] || null,
+      dataPrevista: r[c("DataPrevista")] || null,
+      concluidoEm: r[c("ConcluidoEm")] || null,
     }));
 }
 
+type HistoricoSource = { condominio: string | null; gid: string };
+
+// Cada condomínio tem sua própria aba na planilha de histórico (mesmo
+// spreadsheet, GID por linha da planilha índice). Sem registro cadastrado,
+// cai pra aba legada única (compatibilidade com o deploy original).
+// `condominioSlug` restringe a busca a um único condomínio (página por
+// condomínio) — sem ele, agrega todas as abas cadastradas.
+async function resolveHistoricoSources(condominioSlug?: string): Promise<HistoricoSource[]> {
+  const registry = await getCondominiosRegistry();
+  const comAba = registry.data.filter((r) => r.historicoGid);
+  const fontes: HistoricoSource[] =
+    comAba.length > 0
+      ? comAba.map((r) => ({ condominio: r.condominio, gid: r.historicoGid }))
+      : [{ condominio: null, gid: HISTORICO_GID_LEGADO }];
+
+  if (!condominioSlug) return fontes;
+  // `condominio === null` é o fallback legado (single-tenant) — mantido mesmo
+  // com slug pedido, já que nesse caso não há como confirmar de antemão qual
+  // condomínio é sem ler as linhas da aba.
+  return fontes.filter((f) => f.condominio === null || slugify(f.condominio) === condominioSlug);
+}
+
+async function fetchAllHistoricoRows(condominioSlug?: string): Promise<RawRow[]> {
+  const sources = await resolveHistoricoSources(condominioSlug);
+  const settled = await Promise.allSettled(sources.map((s) => fetchHistoricoRows(s.gid)));
+
+  const failures = settled.filter((s) => s.status === "rejected");
+  if (failures.length === settled.length) {
+    throw (failures[0] as PromiseRejectedResult).reason;
+  }
+
+  const all: RawRow[] = [];
+  settled.forEach((res, i) => {
+    if (res.status !== "fulfilled") return;
+    const condominio = sources[i].condominio;
+    for (const row of res.value) {
+      all.push(condominio ? { ...row, condominio } : row);
+    }
+  });
+  return all;
+}
+
 export const getHistoricoSemana = createServerFn({ method: "GET" })
-  .validator((input: unknown) => input as { semanaInicio: string })
+  .validator((input: unknown) => input as { semanaInicio: string; condominioSlug?: string })
   .handler(async ({ data }): Promise<HistoricoResult> => {
-    const all = await fetchHistoricoRows();
+    const all = await fetchAllHistoricoRows(data.condominioSlug);
     const rows = all.filter((r) => r.semanaInicio === data.semanaInicio);
 
     if (rows.length === 0) {
@@ -134,14 +267,14 @@ export const getHistoricoSemana = createServerFn({ method: "GET" })
 // Lista as semanas que realmente têm fotografia salva na planilha — usada
 // pelo dropdown de filtro, pra não oferecer semanas "fantasma" (calculadas
 // pela fórmula de âncora, mas nunca capturadas pelo Apps Script).
-export const getSemanasDisponiveis = createServerFn({ method: "GET" }).handler(
-  async (): Promise<SemanaDisponivel[]> => {
-    const all = await fetchHistoricoRows();
+export const getSemanasDisponiveis = createServerFn({ method: "GET" })
+  .validator((input: unknown) => (input ?? {}) as { condominioSlug?: string })
+  .handler(async ({ data }): Promise<SemanaDisponivel[]> => {
+    const all = await fetchAllHistoricoRows(data.condominioSlug);
     const map = new Map<number, SemanaDisponivel>();
     for (const r of all) {
       if (!r.semanaN || map.has(r.semanaN)) continue;
       map.set(r.semanaN, { n: r.semanaN, start: r.semanaInicio, end: r.semanaFim });
     }
     return Array.from(map.values()).sort((a, b) => a.n - b.n);
-  },
-);
+  });
