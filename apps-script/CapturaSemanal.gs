@@ -32,7 +32,7 @@ function capturarTodasFotografias() {
   const lastRow = configSheet.getLastRow();
   if (lastRow < 2) return;
 
-  const linhas = configSheet.getRange(2, 1, lastRow - 1, 3).getValues();
+  const linhas = configSheet.getRange(2, 1, lastRow - 1, COL_ID).getValues();
   const erros = [];
   const semana = semanaAtual();
   const followupSheet = getOrCreateFollowupSheet(ss);
@@ -52,9 +52,14 @@ function capturarTodasFotografias() {
       return;
     }
 
+    // Usa o id já salvo na Configuração (coluna D); linhas antigas sem essa
+    // coluna preenchida ainda caem no slug calculado, até rodar
+    // configurarColunaId() (Config.gs).
+    const id = String(row[COL_ID - 1] || "").trim() || slugifyCondominio(condominio);
+
     try {
       capturarFotografiaCondominio(ss, sheet, token, dbId, condominio);
-      registrarFollowUpSemana(followupSheet, condominio, semana);
+      registrarFollowUpSemana(followupSheet, condominio, id, semana);
     } catch (err) {
       erros.push(condominio + ": " + err.message);
     }
@@ -124,9 +129,17 @@ function capturarFotografiaCondominio(ss, sheet, token, dbId, condominio) {
   }
 }
 
+// Calcula a semana em curso a partir da data de HOJE no fuso
+// America/Sao_Paulo (não do instante UTC bruto) — Date.now()/new Date() só
+// enxergam o epoch UTC, então perto da virada do dia (21h-0h em São Paulo,
+// já é madrugada seguinte em UTC) a conta antiga pulava pra semana errada
+// antes da hora. Normaliza "hoje" pra uma data local antes de fazer a
+// aritmética de dias.
 function semanaAtual() {
+  const hojeLocal = Utilities.formatDate(new Date(), "America/Sao_Paulo", "yyyy-MM-dd");
+  const hoje = new Date(hojeLocal + "T00:00:00Z");
   const anchor = new Date(WEEK_ANCHOR + "T00:00:00Z");
-  const diffDays = Math.floor((Date.now() - anchor.getTime()) / 86400000);
+  const diffDays = Math.floor((hoje.getTime() - anchor.getTime()) / 86400000);
   const n = Math.max(1, Math.floor(diffDays / 7) + 1);
   const start = new Date(anchor.getTime() + (n - 1) * 7 * 86400000);
   const end = new Date(start.getTime() + 6 * 86400000);

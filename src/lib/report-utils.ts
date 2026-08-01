@@ -135,10 +135,18 @@ export function weekRange(n: number): { start: string; end: string } {
   return { start, end: addDays(start, 6) };
 }
 
+// Calcula a data de "hoje" no fuso America/Sao_Paulo, não em UTC —
+// `toISOString()` sempre devolve o dia em UTC, que perto da virada (21h-0h
+// em São Paulo já é madrugada seguinte em UTC) fazia essa função contar a
+// semana errada antes da hora (mesma classe de bug corrigida em
+// apps-script/CapturaSemanal.gs).
+function hojeLocalIso(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+}
+
 export function currentWeekNumber(): number {
-  const today = new Date().toISOString().slice(0, 10);
   const diffDays = Math.floor(
-    (new Date(today).getTime() - new Date(WEEK_ANCHOR).getTime()) / 86_400_000,
+    (new Date(hojeLocalIso()).getTime() - new Date(WEEK_ANCHOR).getTime()) / 86_400_000,
   );
   return Math.max(1, Math.floor(diffDays / 7) + 1);
 }

@@ -6,6 +6,7 @@ const CONFIG_SHEET_NAME = "Configuração";
 const COL_CONDOMINIO = 1; // A
 const COL_URL = 2; // B
 const COL_ABA = 3; // C — guarda o GID (numérico) da aba de histórico do condomínio
+const COL_ID = 4; // D — slug usado na URL do relatório (ex.: "miragio-cacupe")
 
 // URL de produção do relatório — usada pra montar o link da aba "Follow-up
 // da semana" (routing atual: /{slug-do-condominio}?semanainicio=...&semanafim=...).
@@ -75,11 +76,11 @@ function formatDataBr(isoDate) {
   return partes.length === 3 ? partes[2] + "-" + partes[1] + "-" + partes[0] : "";
 }
 
-function montarLinkFollowUp(condominio, semanaInicio, semanaFim) {
+function montarLinkFollowUp(id, semanaInicio, semanaFim) {
   return (
     BASE_URL +
     "/" +
-    slugifyCondominio(condominio) +
+    id +
     "?semanainicio=" +
     formatDataBr(semanaInicio) +
     "&semanafim=" +
@@ -100,12 +101,12 @@ function getOrCreateFollowupSheet(ss) {
 
 // Registra (ou substitui, se a captura da semana já tinha rodado antes) a
 // linha de follow-up de UM condomínio numa semana específica.
-function registrarFollowUpSemana(followupSheet, condominio, semana) {
+function registrarFollowUpSemana(followupSheet, condominio, id, semana) {
   removerFollowUpExistente(followupSheet, condominio, semana.n);
   followupSheet.appendRow([
     condominio,
     semana.n,
-    montarLinkFollowUp(condominio, semana.start, semana.end),
+    montarLinkFollowUp(id, semana.start, semana.end),
     semana.start,
     semana.end,
   ]);
@@ -144,4 +145,37 @@ function renomearCabecalhosExistentes() {
     if (!sheet || sheet.getLastColumn() === 0) return;
     sheet.getRange(1, 1, 1, HEADERS_HISTORICO.length).setValues([HEADERS_HISTORICO]);
   });
+}
+
+// Execução única (rodar manualmente pelo editor Apps Script após colar esta
+// versão do código): garante que a coluna "id" (D) existe na aba
+// "Configuração" e preenche o slug de cada condomínio já cadastrado que
+// ainda não tem id — necessário porque o app agora usa essa coluna como
+// identificador da URL (/{id}) em vez de calcular o slug a partir do nome
+// toda vez (nome com acento/espaço virando "Miragio+Cacupé" na URL antiga
+// dava erro). Linhas criadas depois disso já ganham o id automaticamente
+// via configurarCondominio() (GerenciarCondominios.gs).
+function configurarColunaId() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+  if (!configSheet) return;
+
+  const headerCell = configSheet.getRange(1, COL_ID);
+  if (String(headerCell.getValue() || "").trim() === "") {
+    headerCell.setValue("id");
+  }
+
+  const lastRow = configSheet.getLastRow();
+  if (lastRow < 2) return;
+
+  const dados = configSheet.getRange(2, 1, lastRow - 1, COL_ID).getValues();
+  dados.forEach(function (row, i) {
+    const linha = i + 2;
+    const condominio = String(row[0] || "").trim();
+    const idAtual = String(row[COL_ID - 1] || "").trim();
+    if (!condominio || idAtual) return;
+    configSheet.getRange(linha, COL_ID).setValue(slugifyCondominio(condominio));
+  });
+
+  Logger.log("✅ Coluna 'id' configurada e preenchida pros condomínios existentes.");
 }

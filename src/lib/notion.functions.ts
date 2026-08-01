@@ -265,7 +265,7 @@ export const getDemandasByCondominio = createServerFn({ method: "GET" })
     }
 
     const registry = await getCondominiosRegistry();
-    const entry = registry.data.find((r) => slugify(r.condominio) === data.slug);
+    const entry = registry.data.find((r) => r.id === data.slug);
 
     if (entry) {
       const result = await fetchDemandasFromDb(token, entry.notionDatabaseId, entry.condominio);

@@ -114,3 +114,51 @@ function teste6_ListarTriggersInstalados() {
   });
   return resumo;
 }
+
+// Execução única: apaga as linhas da semana 32 (fotografia bugada, gerada
+// por um teste manual antes do fix de fuso horário em semanaAtual() —
+// virava semana errada perto da virada do dia em UTC vs. America/Sao_Paulo)
+// em TODAS as abas de histórico cadastradas na Configuração e também na
+// aba "Follow-up da semana". Rode uma vez só; depois disso pode rodar
+// capturarTodasFotografias de novo pra gerar a semana 31 (a correta) tanto
+// no histórico quanto no follow-up.
+function limparSemana32Espuria() {
+  const SEMANA_A_REMOVER = 32;
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+  const lastRow = configSheet.getLastRow();
+  if (lastRow >= 2) {
+    const gids = configSheet.getRange(2, COL_ABA, lastRow - 1, 1).getValues();
+    gids.forEach(function (row) {
+      const gid = row[0];
+      if (!gid) return;
+      const sheet = getSheetByGid(ss, gid);
+      if (!sheet) return;
+      const removidas = removerLinhasPorSemana(sheet, 1, SEMANA_A_REMOVER); // coluna A = SemanaN
+      Logger.log(sheet.getName() + ": " + removidas + " linha(s) da semana " + SEMANA_A_REMOVER + " removida(s).");
+    });
+  }
+
+  const followupSheet = ss.getSheetByName(FOLLOWUP_SHEET_NAME);
+  if (followupSheet) {
+    const removidas = removerLinhasPorSemana(followupSheet, 2, SEMANA_A_REMOVER); // coluna B = semana
+    Logger.log(FOLLOWUP_SHEET_NAME + ": " + removidas + " linha(s) da semana " + SEMANA_A_REMOVER + " removida(s).");
+  }
+
+  Logger.log("✅ Limpeza concluída.");
+}
+
+function removerLinhasPorSemana(sheet, coluna, semanaN) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 0;
+  const values = sheet.getRange(2, coluna, lastRow - 1, 1).getValues();
+  let removidas = 0;
+  for (let i = values.length - 1; i >= 0; i--) {
+    if (Number(values[i][0]) === semanaN) {
+      sheet.deleteRow(i + 2);
+      removidas++;
+    }
+  }
+  return removidas;
+}

@@ -33,7 +33,7 @@ function processarConfiguracao() {
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) return;
 
-    const dados = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
+    const dados = sheet.getRange(2, 1, lastRow - 1, COL_ID).getValues();
     dados.forEach(function (row, i) {
       const linha = i + 2;
       const condominio = String(row[0] || "").trim();
@@ -65,6 +65,9 @@ function configurarCondominio(ss, configSheet, linha, condominio, url) {
 
   celulaAba.clearNote();
   celulaAba.setValue(aba.getSheetId());
+  // Slug usado na URL do relatório (/{id}) — o app lê essa coluna em vez de
+  // calcular a partir do nome, pra sempre bater exatamente com a rota.
+  configSheet.getRange(linha, COL_ID).setValue(slugifyCondominio(condominio));
 
   capturarFotografiaInicial(ss, aba, dbId, condominio, celulaAba);
 }

@@ -22,6 +22,7 @@ export type CondominioRegistroEntry = {
   condominio: string;
   notionDatabaseId: string;
   historicoGid: string;
+  id: string;
 };
 
 export type GetCondominiosRegistryResult = {
@@ -133,6 +134,7 @@ export const getCondominiosRegistry = createServerFn({ method: "GET" }).handler(
       const iCondominio = col(header, "Condomínio", "Condominio");
       const iUrl = col(header, "URL");
       const iGid = col(header, "GID Histórico", "GID Historico", "Aba");
+      const iId = col(header, "id", "Id", "ID");
 
       const data: CondominioRegistroEntry[] = [];
       for (const r of body) {
@@ -142,7 +144,10 @@ export const getCondominiosRegistry = createServerFn({ method: "GET" }).handler(
         if (!condominio || !url) continue;
         const notionDatabaseId = extractNotionDatabaseId(url);
         if (!notionDatabaseId) continue;
-        data.push({ condominio, notionDatabaseId, historicoGid });
+        // Fallback pro slug calculado em linhas antigas ainda sem a coluna
+        // "id" preenchida (ex.: cadastradas antes dessa coluna existir).
+        const id = (r[iId] ?? "").trim() || slugify(condominio);
+        data.push({ condominio, notionDatabaseId, historicoGid, id });
       }
       return { data, error: null };
     } catch (e) {
@@ -195,7 +200,7 @@ async function fetchHistoricoRows(gid: string): Promise<RawRow[]> {
     }));
 }
 
-type HistoricoSource = { condominio: string | null; gid: string };
+type HistoricoSource = { condominio: string | null; id: string | null; gid: string };
 
 // Cada condomínio tem sua própria aba na planilha de histórico (mesmo
 // spreadsheet, GID por linha da planilha índice). Sem registro cadastrado,
@@ -207,14 +212,14 @@ async function resolveHistoricoSources(condominioSlug?: string): Promise<Histori
   const comAba = registry.data.filter((r) => r.historicoGid);
   const fontes: HistoricoSource[] =
     comAba.length > 0
-      ? comAba.map((r) => ({ condominio: r.condominio, gid: r.historicoGid }))
-      : [{ condominio: null, gid: HISTORICO_GID_LEGADO }];
+      ? comAba.map((r) => ({ condominio: r.condominio, id: r.id, gid: r.historicoGid }))
+      : [{ condominio: null, id: null, gid: HISTORICO_GID_LEGADO }];
 
   if (!condominioSlug) return fontes;
   // `condominio === null` é o fallback legado (single-tenant) — mantido mesmo
   // com slug pedido, já que nesse caso não há como confirmar de antemão qual
   // condomínio é sem ler as linhas da aba.
-  return fontes.filter((f) => f.condominio === null || slugify(f.condominio) === condominioSlug);
+  return fontes.filter((f) => f.condominio === null || f.id === condominioSlug);
 }
 
 async function fetchAllHistoricoRows(condominioSlug?: string): Promise<RawRow[]> {

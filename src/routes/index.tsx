@@ -1,7 +1,6 @@
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getCondominiosRegistry } from "@/lib/sheets.functions";
-import { slugify } from "@/lib/report-utils";
 
 const registryQueryOptions = queryOptions({
   queryKey: ["sheets", "registry"],
@@ -59,7 +58,7 @@ function IndexPage() {
                 <li key={c.condominio}>
                   <Link
                     to="/$condominio"
-                    params={{ condominio: slugify(c.condominio) }}
+                    params={{ condominio: c.id }}
                     className="text-foreground hover:text-brand-green flex items-center justify-between py-3 text-sm font-medium transition-colors"
                   >
                     {c.condominio}
