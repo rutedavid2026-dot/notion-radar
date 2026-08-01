@@ -121,10 +121,11 @@ function slugify(nome: string): string {
 // de derrubar o carregamento inteiro.
 export const getCondominiosRegistry = createServerFn({ method: "GET" }).handler(
   async (): Promise<GetCondominiosRegistryResult> => {
-    const spreadsheetId = process.env.REGISTRY_SPREADSHEET_ID;
-    if (!spreadsheetId) {
-      return { data: [], error: "REGISTRY_SPREADSHEET_ID não configurado." };
-    }
+    // Mesma planilha do histórico (SPREADSHEET_ID acima) — a env var permite
+    // apontar pra outra planilha em algum deploy futuro, mas não é segredo
+    // (é lida via export CSV público), por isso tem valor padrão fixo aqui
+    // em vez de exigir configuração em todo ambiente nesse.
+    const spreadsheetId = process.env.REGISTRY_SPREADSHEET_ID ?? SPREADSHEET_ID;
     const gid = process.env.REGISTRY_GID ?? "0";
 
     try {

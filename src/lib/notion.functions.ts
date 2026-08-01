@@ -2,6 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { getCondominiosRegistry } from "./sheets.functions";
 import { slugify } from "./report-utils";
 
+// Fallback legado (deploy single-tenant original, Miragio Cacupé) — usado só
+// quando a planilha índice está vazia. Não é segredo (é só um ID de
+// database, inútil sem o token), por isso tem valor padrão fixo em vez de
+// exigir configuração em todo ambiente.
+const NOTION_DATABASE_ID_LEGADO = "2113eaf518c583049f9a01672a68107f";
+
 export type Demanda = {
   id: string;
   demanda: string;
@@ -189,11 +195,10 @@ async function fetchDemandasFromDb(
 export const getDemandas = createServerFn({ method: "GET" }).handler(
   async (): Promise<GetDemandasResult> => {
     const token = process.env.NOTION_API_KEY;
-    const dbId = process.env.NOTION_DATABASE_ID;
-    if (!token || !dbId) {
-      return { data: [], error: "NOTION_API_KEY / NOTION_DATABASE_ID não configurados." };
+    if (!token) {
+      return { data: [], error: "NOTION_API_KEY não configurada." };
     }
-    return fetchDemandasFromDb(token, dbId);
+    return fetchDemandasFromDb(token, process.env.NOTION_DATABASE_ID ?? NOTION_DATABASE_ID_LEGADO);
   },
 );
 
@@ -214,9 +219,7 @@ export const getAllDemandas = createServerFn({ method: "GET" }).handler(
     const entries =
       registry.data.length > 0
         ? registry.data.map((r) => ({ condominio: r.condominio, dbId: r.notionDatabaseId }))
-        : process.env.NOTION_DATABASE_ID
-          ? [{ condominio: "", dbId: process.env.NOTION_DATABASE_ID }]
-          : [];
+        : [{ condominio: "", dbId: process.env.NOTION_DATABASE_ID ?? NOTION_DATABASE_ID_LEGADO }];
 
     if (entries.length === 0) {
       return {
@@ -273,9 +276,12 @@ export const getDemandasByCondominio = createServerFn({ method: "GET" })
     }
 
     // Planilha índice ainda vazia — cai pro fallback legado de database única
-    // (env var) e confirma que o nome do condomínio ali bate com o slug pedido.
-    if (registry.data.length === 0 && process.env.NOTION_DATABASE_ID) {
-      const result = await fetchDemandasFromDb(token, process.env.NOTION_DATABASE_ID);
+    // e confirma que o nome do condomínio ali bate com o slug pedido.
+    if (registry.data.length === 0) {
+      const result = await fetchDemandasFromDb(
+        token,
+        process.env.NOTION_DATABASE_ID ?? NOTION_DATABASE_ID_LEGADO,
+      );
       const nomeReal = result.data[0]?.condominio ?? null;
       if (nomeReal && slugify(nomeReal) === data.slug) {
         return { ...result, condominio: nomeReal };

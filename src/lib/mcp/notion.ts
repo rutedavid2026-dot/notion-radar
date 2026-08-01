@@ -3,6 +3,12 @@
 // arquivo não deve puxar as dependências do @tanstack/react-start pro bundle
 // do endpoint MCP.
 
+// Mesmos fallbacks fixos de src/lib/sheets.functions.ts e
+// src/lib/notion.functions.ts (duplicados de propósito, ver comentário
+// acima) — não são segredo, evita exigir env var em todo ambiente.
+const REGISTRY_SPREADSHEET_ID_PADRAO = "1fEkPgTf6oGYknWEP6zzi8eyBTpoDDQR0goJg1D_Wed0";
+const NOTION_DATABASE_ID_LEGADO = "2113eaf518c583049f9a01672a68107f";
+
 export type Demanda = {
   id: string;
   demanda: string;
@@ -80,8 +86,7 @@ function parseCsvLine(line: string): string[] {
 }
 
 async function fetchRegistryEntries(): Promise<{ condominio: string; dbId: string }[]> {
-  const spreadsheetId = process.env.REGISTRY_SPREADSHEET_ID;
-  if (!spreadsheetId) return [];
+  const spreadsheetId = process.env.REGISTRY_SPREADSHEET_ID ?? REGISTRY_SPREADSHEET_ID_PADRAO;
   const gid = process.env.REGISTRY_GID ?? "0";
   const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
   const res = await fetch(url);
@@ -172,9 +177,7 @@ export async function fetchDemandas(): Promise<{ data: Demanda[]; error: string 
   const entries =
     registryEntries.length > 0
       ? registryEntries
-      : process.env.NOTION_DATABASE_ID
-        ? [{ condominio: "", dbId: process.env.NOTION_DATABASE_ID }]
-        : [];
+      : [{ condominio: "", dbId: process.env.NOTION_DATABASE_ID ?? NOTION_DATABASE_ID_LEGADO }];
 
   if (entries.length === 0) {
     return { data: [], error: "No condominium registered (empty index sheet / env var)" };
