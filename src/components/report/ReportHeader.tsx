@@ -41,15 +41,19 @@ export function ReportHeader({
       </p>
 
       <p className="text-muted-foreground mt-2 text-xs">
-        Período:{" "}
-        <span className="text-foreground font-medium">
-          {semanaInicio ? formatDatePt(semanaInicio) : "—"} até{" "}
-          {semanaFim
-            ? formatDatePt(semanaFim)
-            : semanaInicio
-              ? formatDatePt(addDays(semanaInicio, 6))
-              : "—"}
-        </span>
+        {semanaInicio ? (
+          <>
+            Período:{" "}
+            <span className="text-foreground font-medium">
+              {formatDatePt(semanaInicio)} até{" "}
+              {semanaFim ? formatDatePt(semanaFim) : formatDatePt(addDays(semanaInicio, 6))}
+            </span>
+          </>
+        ) : (
+          <>
+            Período: <span className="text-foreground font-medium">Todas as semanas disponíveis</span>
+          </>
+        )}
         {congelado && " · Estes dados são fixos e não refletem mudanças feitas depois no Notion."}
       </p>
 
