@@ -63,6 +63,14 @@ export function temPrioridade(p: string, alvo: string): boolean {
   return prioridadeList(p).includes(alvo);
 }
 
+// Comparação sem distinguir maiúsculas/acentos (mesmo motivo de statusIn) —
+// "Construtora" pode aparecer como "CONSTRUTORA" dependendo de como foi
+// digitado no Notion.
+export function temResponsavel(responsavel: string, alvo: string): boolean {
+  const alvoNorm = normalizeForMatch(alvo);
+  return splitLista(responsavel).some((r) => normalizeForMatch(r) === alvoNorm);
+}
+
 // Returns ISO date (YYYY-MM-DD) of the Monday of the given date's week.
 export function mondayOf(dateStr: string): string {
   const d = new Date(dateStr);

@@ -13,6 +13,7 @@ import {
   splitLista,
   statusBucket,
   temPrioridade,
+  temResponsavel,
   uniqueSorted,
   weekRange,
   SEMANA_TODAS,
@@ -198,6 +199,10 @@ function ReportPage() {
       ),
     [abertas],
   );
+  const construtora = useMemo(
+    () => filtered.filter((r) => temResponsavel(r.responsavel, "Construtora")),
+    [filtered],
+  );
 
   const dataUltimaEdicaoLive = useMemo(() => {
     if (allRows.length === 0) return null;
@@ -275,6 +280,14 @@ function ReportPage() {
               description="Demais demandas em andamento, não iniciadas, agendadas ou aguardando providências."
               rows={operacionais}
             />
+
+            {construtora.length > 0 && (
+              <DemandaSectionTable
+                title="Demandas da Construtora"
+                description="Demandas cuja responsabilidade é da Construtora."
+                rows={construtora}
+              />
+            )}
           </>
         )}
 
