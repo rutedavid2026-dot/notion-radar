@@ -30,6 +30,19 @@ export type GetCondominiosRegistryResult = {
   error: string | null;
 };
 
+export type FollowUpEntry = {
+  condominio: string;
+  semana: number;
+  linkFollowUp: string;
+  dataInicio: string;
+  dataTermino: string;
+};
+
+export type GetFollowUpsResult = {
+  data: FollowUpEntry[];
+  error: string | null;
+};
+
 // Parser CSV mínimo (RFC4180): trata campos entre aspas com vírgula, quebra de
 // linha e aspas escapadas ("").
 function parseCsv(text: string): string[][] {
@@ -155,6 +168,50 @@ export const getCondominiosRegistry = createServerFn({ method: "GET" }).handler(
       return {
         data: [],
         error: e instanceof Error ? e.message : "Erro desconhecido ao ler a planilha índice",
+      };
+    }
+  },
+);
+
+// Lê a aba "Publicação"/follow-ups da mesma planilha índice (Condomínio |
+// Semana | Link do follow-up | Data início | Data término) — uma linha por
+// condomínio por semana, usada pela página /gerenciar pra listar os links
+// públicos do relatório sem a cliente precisar abrir a planilha.
+export const getFollowUps = createServerFn({ method: "GET" }).handler(
+  async (): Promise<GetFollowUpsResult> => {
+    const spreadsheetId = process.env.REGISTRY_SPREADSHEET_ID ?? SPREADSHEET_ID;
+    const gid = process.env.FOLLOWUPS_GID ?? "1720412368";
+
+    try {
+      const [header, ...body] = await fetchCsv(spreadsheetId, gid);
+      if (!header) return { data: [], error: null };
+
+      const iCondominio = col(header, "condominio", "condomínio", "Condominio", "Condomínio");
+      const iSemana = col(header, "semana", "Semana");
+      const iLink = col(header, "link-follow-up", "link_followup", "Link Follow-up", "URL");
+      const iInicio = col(header, "data-inicio", "data_inicio", "Data Início", "data-início");
+      const iTermino = col(header, "data-termino", "data_termino", "Data Término", "data-término");
+
+      const data: FollowUpEntry[] = [];
+      for (const r of body) {
+        const condominio = (r[iCondominio] ?? "").trim();
+        const linkFollowUp = (r[iLink] ?? "").trim();
+        const semana = Number((r[iSemana] ?? "").trim());
+        if (!condominio || !linkFollowUp || !Number.isFinite(semana)) continue;
+        data.push({
+          condominio,
+          semana,
+          linkFollowUp,
+          dataInicio: (r[iInicio] ?? "").trim(),
+          dataTermino: (r[iTermino] ?? "").trim(),
+        });
+      }
+      data.sort((a, b) => a.condominio.localeCompare(b.condominio) || b.semana - a.semana);
+      return { data, error: null };
+    } catch (e) {
+      return {
+        data: [],
+        error: e instanceof Error ? e.message : "Erro desconhecido ao ler a planilha de follow-ups",
       };
     }
   },
