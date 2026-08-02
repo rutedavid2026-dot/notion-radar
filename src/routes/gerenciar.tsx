@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { getFollowUps } from "@/lib/sheets.functions";
@@ -10,6 +11,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 
 const followUpsQueryOptions = queryOptions({
   queryKey: ["sheets", "follow-ups"],
@@ -31,12 +33,31 @@ export const Route = createFileRoute("/gerenciar")({
   component: GerenciarPage,
 });
 
+function CopyLinkButton({ url }: { url: string }) {
+  const [copiado, setCopiado] = useState(false);
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={async () => {
+        await navigator.clipboard.writeText(url);
+        setCopiado(true);
+        setTimeout(() => setCopiado(false), 2000);
+      }}
+    >
+      {copiado ? "Copiado!" : "Copiar link"}
+    </Button>
+  );
+}
+
 function GerenciarPage() {
   const { data: result } = useSuspenseQuery(followUpsQueryOptions);
 
   return (
     <main className="bg-background min-h-screen">
-      <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 md:px-8 md:py-10">
+      <div className="mx-auto max-w-4xl space-y-5 px-4 py-6 md:px-8 md:py-10">
         <header className="border-brand-maroon overflow-hidden rounded-2xl border-t-4 shadow-sm">
           <div className="bg-brand-cream flex">
             <div className="bg-brand-green w-3 shrink-0" />
@@ -63,7 +84,8 @@ function GerenciarPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Semana</TableHead>
                   <TableHead>Datas</TableHead>
-                  <TableHead className="text-right">Link</TableHead>
+                  <TableHead>URL</TableHead>
+                  <TableHead className="text-right">Copiar Link</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -76,15 +98,18 @@ function GerenciarPage() {
                     <TableCell className="text-muted-foreground">
                       {formatDatePt(entry.dataInicio)} a {formatDatePt(entry.dataTermino)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell>
                       <a
                         href={entry.linkFollowUp}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-brand-green hover:text-brand-green/80 font-semibold transition-colors"
+                        className="text-brand-green hover:text-brand-green/80 break-all underline-offset-2 hover:underline"
                       >
-                        Abrir relatório →
+                        {entry.linkFollowUp}
                       </a>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <CopyLinkButton url={entry.linkFollowUp} />
                     </TableCell>
                   </TableRow>
                 ))}
