@@ -163,17 +163,14 @@ function removerLinhasPorSemana(sheet, coluna, semanaN) {
   return removidas;
 }
 
-// Execução única: a linha da semana 31 sumiu da aba "Follow-up da semana"
-// (provavelmente removida junto com a limpeza da semana 32 espúria acima),
-// mas os dados da semana 31 continuam intactos na aba de histórico de cada
-// condomínio. Esta função reconstrói a linha de follow-up de uma semana a
-// partir do que já existe no histórico, sem tocar em mais nada. Rode uma vez
-// só pelo editor do Apps Script.
-function reconstruirFollowUpSemana31() {
-  reconstruirFollowUpSemana(31);
-}
-
-function reconstruirFollowUpSemana(semanaN) {
+// Execução única: reconstrói a aba "Follow-up da semana" inteira a partir
+// do que já existe no histórico de cada condomínio — uma linha de follow-up
+// pra CADA semana já fotografada (29, 30, 31, 32...), não só a mais recente.
+// Cobre o caso de linhas terem sumido do follow-up (ex.: removidas junto com
+// a limpeza da semana 32 espúria acima) sem que o histórico tenha sido
+// afetado. Não apaga nada — só (re)grava, semana a semana, o que encontrar.
+// Rode uma vez só pelo editor do Apps Script.
+function reconstruirTodosFollowUps() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
   const lastRow = configSheet.getLastRow();
@@ -204,23 +201,30 @@ function reconstruirFollowUpSemana(semanaN) {
     }
 
     const dados = sheet.getRange(2, 1, dadosLastRow - 1, 3).getValues(); // A=SemanaN, B=SemanaInicio, C=SemanaFim
-    const linhaSemana = dados.find(function (r) {
-      return Number(r[0]) === semanaN;
+    const semanasPorNumero = new Map();
+    dados.forEach(function (r) {
+      const n = Number(r[0]);
+      if (!n || semanasPorNumero.has(n)) return;
+      semanasPorNumero.set(n, {
+        n: n,
+        start: formatIsoDateValue(r[1]),
+        end: formatIsoDateValue(r[2]),
+      });
     });
-    if (!linhaSemana) {
-      Logger.log(
-        "❌ " + condominio + ": não encontrei nenhuma linha da semana " + semanaN + " no histórico.",
-      );
+
+    if (semanasPorNumero.size === 0) {
+      Logger.log("❌ " + condominio + ": nenhuma semana encontrada no histórico.");
       return;
     }
 
-    const semana = {
-      n: semanaN,
-      start: formatIsoDateValue(linhaSemana[1]),
-      end: formatIsoDateValue(linhaSemana[2]),
-    };
-    registrarFollowUpSemana(followupSheet, condominio, id, semana);
-    Logger.log("✅ " + condominio + ": follow-up da semana " + semanaN + " reconstruído.");
+    Array.from(semanasPorNumero.values())
+      .sort(function (a, b) {
+        return a.n - b.n;
+      })
+      .forEach(function (semana) {
+        registrarFollowUpSemana(followupSheet, condominio, id, semana);
+        Logger.log("✅ " + condominio + ": follow-up da semana " + semana.n + " reconstruído.");
+      });
   });
 }
 
