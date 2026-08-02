@@ -24,11 +24,6 @@ export function ReportHeader({
           <h1 className="text-brand-green text-2xl font-bold tracking-tight md:text-3xl">
             {condominio}
           </h1>
-          {congelado && (
-            <span className="bg-brand-green/10 text-brand-green rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide">
-              Semana congelada
-            </span>
-          )}
         </div>
         <p className="text-muted-foreground text-sm">
           Referência:{" "}
