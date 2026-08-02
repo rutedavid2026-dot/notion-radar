@@ -162,3 +162,71 @@ function removerLinhasPorSemana(sheet, coluna, semanaN) {
   }
   return removidas;
 }
+
+// Execução única: a linha da semana 31 sumiu da aba "Follow-up da semana"
+// (provavelmente removida junto com a limpeza da semana 32 espúria acima),
+// mas os dados da semana 31 continuam intactos na aba de histórico de cada
+// condomínio. Esta função reconstrói a linha de follow-up de uma semana a
+// partir do que já existe no histórico, sem tocar em mais nada. Rode uma vez
+// só pelo editor do Apps Script.
+function reconstruirFollowUpSemana31() {
+  reconstruirFollowUpSemana(31);
+}
+
+function reconstruirFollowUpSemana(semanaN) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+  const lastRow = configSheet.getLastRow();
+  if (lastRow < 2) {
+    Logger.log("❌ Nenhum condomínio configurado na aba '" + CONFIG_SHEET_NAME + "'.");
+    return;
+  }
+
+  const followupSheet = getOrCreateFollowupSheet(ss);
+  const linhas = configSheet.getRange(2, 1, lastRow - 1, COL_ID).getValues();
+
+  linhas.forEach(function (row) {
+    const condominio = String(row[0] || "").trim();
+    const gid = row[COL_ABA - 1];
+    const id = String(row[COL_ID - 1] || "").trim() || slugifyCondominio(condominio);
+    if (!condominio || !gid) return;
+
+    const sheet = getSheetByGid(ss, gid);
+    if (!sheet) {
+      Logger.log("❌ " + condominio + ": aba de histórico (gid " + gid + ") não encontrada.");
+      return;
+    }
+
+    const dadosLastRow = sheet.getLastRow();
+    if (dadosLastRow < 2) {
+      Logger.log("❌ " + condominio + ": aba de histórico está vazia.");
+      return;
+    }
+
+    const dados = sheet.getRange(2, 1, dadosLastRow - 1, 3).getValues(); // A=SemanaN, B=SemanaInicio, C=SemanaFim
+    const linhaSemana = dados.find(function (r) {
+      return Number(r[0]) === semanaN;
+    });
+    if (!linhaSemana) {
+      Logger.log(
+        "❌ " + condominio + ": não encontrei nenhuma linha da semana " + semanaN + " no histórico.",
+      );
+      return;
+    }
+
+    const semana = {
+      n: semanaN,
+      start: formatIsoDateValue(linhaSemana[1]),
+      end: formatIsoDateValue(linhaSemana[2]),
+    };
+    registrarFollowUpSemana(followupSheet, condominio, id, semana);
+    Logger.log("✅ " + condominio + ": follow-up da semana " + semanaN + " reconstruído.");
+  });
+}
+
+// A coluna de data no histórico pode vir como objeto Date (célula formatada
+// como data) ou como texto "yyyy-MM-dd" — normaliza pros dois casos.
+function formatIsoDateValue(value) {
+  if (value instanceof Date) return Utilities.formatDate(value, "UTC", "yyyy-MM-dd");
+  return String(value || "").slice(0, 10);
+}
