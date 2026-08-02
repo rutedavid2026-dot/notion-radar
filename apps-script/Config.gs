@@ -10,7 +10,7 @@ const COL_ID = 4; // D — slug usado na URL do relatório (ex.: "miragio-cacupe
 
 // URL de produção do relatório — usada pra montar o link da aba "Follow-up
 // da semana" (routing atual: /{slug-do-condominio}?semanainicio=...&semanafim=...).
-const BASE_URL = "https://notion-radar.lovable.app";
+const BASE_URL = "https://equipesindicas.lovable.app";
 
 const FOLLOWUP_SHEET_NAME = "Follow-up da semana";
 const HEADERS_FOLLOWUP = ["condominio", "semana", "link-follow-up", "data-inicio", "data-termino"];
