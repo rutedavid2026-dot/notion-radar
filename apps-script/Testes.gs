@@ -163,6 +163,21 @@ function removerLinhasPorSemana(sheet, coluna, semanaN) {
   return removidas;
 }
 
+// Execução única: sincroniza no "Follow-up da semana" só a semana mais
+// recente já presente no histórico de CADA condomínio (não mexe em Notion,
+// só lê o que a aba de histórico daquele condomínio já tem gravado — cada
+// condomínio pode estar numa semana diferente da aba de histórico dele).
+// Sobrescreve a linha daquela semana no follow-up se já existir. Rode pelo
+// editor do Apps Script sempre que precisar recolocar o follow-up em dia com
+// o histórico.
+function sincronizarFollowUpUltimaSemana() {
+  processarHistoricoDeCadaCondominio(function (condominio, id, followupSheet, semanas) {
+    const ultima = semanas[semanas.length - 1];
+    registrarFollowUpSemana(followupSheet, condominio, id, ultima);
+    Logger.log("✅ " + condominio + ": follow-up da semana " + ultima.n + " (última) sincronizado.");
+  });
+}
+
 // Execução única: reconstrói a aba "Follow-up da semana" inteira a partir
 // do que já existe no histórico de cada condomínio — uma linha de follow-up
 // pra CADA semana já fotografada (29, 30, 31, 32...), não só a mais recente.
@@ -171,6 +186,20 @@ function removerLinhasPorSemana(sheet, coluna, semanaN) {
 // afetado. Não apaga nada — só (re)grava, semana a semana, o que encontrar.
 // Rode uma vez só pelo editor do Apps Script.
 function reconstruirTodosFollowUps() {
+  processarHistoricoDeCadaCondominio(function (condominio, id, followupSheet, semanas) {
+    semanas.forEach(function (semana) {
+      registrarFollowUpSemana(followupSheet, condominio, id, semana);
+      Logger.log("✅ " + condominio + ": follow-up da semana " + semana.n + " reconstruído.");
+    });
+  });
+}
+
+// Percorre a Configuração e, pra cada condomínio com aba de histórico
+// (coluna "Aba" preenchida), lê as semanas já gravadas ali (ordenadas,
+// deduplicadas por SemanaN) e chama `processarSemanas(condominio, id,
+// followupSheet, semanas)`. Falhas em um condomínio (aba não encontrada,
+// histórico vazio) só geram um log, não interrompem os demais.
+function processarHistoricoDeCadaCondominio(processarSemanas) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
   const lastRow = configSheet.getLastRow();
@@ -217,14 +246,10 @@ function reconstruirTodosFollowUps() {
       return;
     }
 
-    Array.from(semanasPorNumero.values())
-      .sort(function (a, b) {
-        return a.n - b.n;
-      })
-      .forEach(function (semana) {
-        registrarFollowUpSemana(followupSheet, condominio, id, semana);
-        Logger.log("✅ " + condominio + ": follow-up da semana " + semana.n + " reconstruído.");
-      });
+    const semanas = Array.from(semanasPorNumero.values()).sort(function (a, b) {
+      return a.n - b.n;
+    });
+    processarSemanas(condominio, id, followupSheet, semanas);
   });
 }
 
