@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { getFollowUps } from "@/lib/sheets.functions";
+import { getFollowUps, type FollowUpEntry } from "@/lib/sheets.functions";
 import { formatDatePt } from "@/lib/report-utils";
 import {
   Table,
@@ -78,46 +78,84 @@ function GerenciarPage() {
               {result.error ?? "Nenhum follow-up cadastrado ainda na planilha."}
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Semana</TableHead>
-                  <TableHead>Datas</TableHead>
-                  <TableHead>URL</TableHead>
-                  <TableHead className="text-right">Copiar Link</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Tabela — telas médias/grandes */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Semana</TableHead>
+                      <TableHead>Datas</TableHead>
+                      <TableHead>URL</TableHead>
+                      <TableHead className="text-right">Copiar Link</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {result.data.map((entry) => (
+                      <TableRow key={`${entry.condominio}-${entry.semana}`}>
+                        <TableCell className="text-foreground font-medium">
+                          {entry.condominio}
+                        </TableCell>
+                        <TableCell>{entry.semana}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {formatDatePt(entry.dataInicio)} a {formatDatePt(entry.dataTermino)}
+                        </TableCell>
+                        <TableCell>
+                          <a
+                            href={entry.linkFollowUp}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-brand-green hover:text-brand-green/80 break-all underline-offset-2 hover:underline"
+                          >
+                            {entry.linkFollowUp}
+                          </a>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <CopyLinkButton url={entry.linkFollowUp} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Cards — telas pequenas (a URL crua não cabe numa coluna estreita) */}
+              <ul className="divide-y md:hidden">
                 {result.data.map((entry) => (
-                  <TableRow key={`${entry.condominio}-${entry.semana}`}>
-                    <TableCell className="text-foreground font-medium">
-                      {entry.condominio}
-                    </TableCell>
-                    <TableCell>{entry.semana}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDatePt(entry.dataInicio)} a {formatDatePt(entry.dataTermino)}
-                    </TableCell>
-                    <TableCell>
-                      <a
-                        href={entry.linkFollowUp}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand-green hover:text-brand-green/80 break-all underline-offset-2 hover:underline"
-                      >
-                        {entry.linkFollowUp}
-                      </a>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <CopyLinkButton url={entry.linkFollowUp} />
-                    </TableCell>
-                  </TableRow>
+                  <li key={`${entry.condominio}-${entry.semana}`}>
+                    <FollowUpCard entry={entry} />
+                  </li>
                 ))}
-              </TableBody>
-            </Table>
+              </ul>
+            </>
           )}
         </div>
       </div>
     </main>
+  );
+}
+
+function FollowUpCard({ entry }: { entry: FollowUpEntry }) {
+  return (
+    <div className="space-y-3 py-4 first:pt-0 last:pb-0">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-foreground font-medium">{entry.condominio}</p>
+        <span className="bg-brand-green/10 text-brand-green shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold">
+          Semana {entry.semana}
+        </span>
+      </div>
+      <p className="text-muted-foreground text-sm">
+        {formatDatePt(entry.dataInicio)} a {formatDatePt(entry.dataTermino)}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button asChild type="button" variant="outline" size="sm">
+          <a href={entry.linkFollowUp} target="_blank" rel="noopener noreferrer">
+            Abrir relatório →
+          </a>
+        </Button>
+        <CopyLinkButton url={entry.linkFollowUp} />
+      </div>
+    </div>
   );
 }
