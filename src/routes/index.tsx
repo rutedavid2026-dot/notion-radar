@@ -42,6 +42,42 @@ function IndexPage() {
           </div>
         </header>
 
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Link
+            to="/relatorio-geral"
+            className="bg-card hover:border-brand-green group flex items-center justify-between rounded-xl border p-5 shadow-sm transition-colors"
+          >
+            <div>
+              <p className="text-brand-green text-base font-bold tracking-tight">
+                Dashboard (Relatório Geral)
+              </p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                KPIs e demandas consolidadas de todos os condomínios.
+              </p>
+            </div>
+            <span aria-hidden className="text-brand-green group-hover:translate-x-0.5 transition-transform">
+              →
+            </span>
+          </Link>
+
+          <Link
+            to="/gerenciar"
+            className="bg-card hover:border-brand-green group flex items-center justify-between rounded-xl border p-5 shadow-sm transition-colors"
+          >
+            <div>
+              <p className="text-brand-green text-base font-bold tracking-tight">
+                Gerenciar Links
+              </p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Links dos follow-ups semanais de cada condomínio.
+              </p>
+            </div>
+            <span aria-hidden className="text-brand-green group-hover:translate-x-0.5 transition-transform">
+              →
+            </span>
+          </Link>
+        </div>
+
         <div className="bg-card rounded-xl border p-6 shadow-sm">
           <h1 className="text-brand-green text-xl font-bold tracking-tight">
             Selecione um condomínio
@@ -54,17 +90,6 @@ function IndexPage() {
             </p>
           ) : (
             <ul className="mt-4 divide-y">
-              {result.data.length > 1 && (
-                <li>
-                  <Link
-                    to="/relatorio-geral"
-                    className="text-foreground hover:text-brand-green flex items-center justify-between py-3 text-sm font-medium transition-colors"
-                  >
-                    Relatório consolidado (todos os condomínios)
-                    <span aria-hidden>→</span>
-                  </Link>
-                </li>
-              )}
               {result.data.map((c) => (
                 <li key={c.condominio}>
                   <Link
