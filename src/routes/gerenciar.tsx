@@ -72,65 +72,65 @@ function GerenciarPage() {
           </div>
         </header>
 
-        <div className="bg-card rounded-xl border p-6 shadow-sm">
-          {result.data.length === 0 ? (
+        {result.data.length === 0 ? (
+          <div className="bg-card rounded-xl border p-6 shadow-sm">
             <p className="text-muted-foreground text-sm">
               {result.error ?? "Nenhum follow-up cadastrado ainda na planilha."}
             </p>
-          ) : (
-            <>
-              {/* Tabela — telas médias/grandes */}
-              <div className="hidden md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Semana</TableHead>
-                      <TableHead>Datas</TableHead>
-                      <TableHead>URL</TableHead>
-                      <TableHead className="text-right">Copiar Link</TableHead>
+          </div>
+        ) : (
+          <>
+            {/* Tabela — telas médias/grandes */}
+            <div className="bg-card hidden rounded-xl border p-6 shadow-sm md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Semana</TableHead>
+                    <TableHead>Datas</TableHead>
+                    <TableHead>URL</TableHead>
+                    <TableHead className="text-right">Copiar Link</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {result.data.map((entry) => (
+                    <TableRow key={`${entry.condominio}-${entry.semana}`}>
+                      <TableCell className="text-foreground font-medium">
+                        {entry.condominio}
+                      </TableCell>
+                      <TableCell>{entry.semana}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDatePt(entry.dataInicio)} a {formatDatePt(entry.dataTermino)}
+                      </TableCell>
+                      <TableCell>
+                        <a
+                          href={entry.linkFollowUp}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-brand-green hover:text-brand-green/80 break-all underline-offset-2 hover:underline"
+                        >
+                          {entry.linkFollowUp}
+                        </a>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <CopyLinkButton url={entry.linkFollowUp} />
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {result.data.map((entry) => (
-                      <TableRow key={`${entry.condominio}-${entry.semana}`}>
-                        <TableCell className="text-foreground font-medium">
-                          {entry.condominio}
-                        </TableCell>
-                        <TableCell>{entry.semana}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {formatDatePt(entry.dataInicio)} a {formatDatePt(entry.dataTermino)}
-                        </TableCell>
-                        <TableCell>
-                          <a
-                            href={entry.linkFollowUp}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-brand-green hover:text-brand-green/80 break-all underline-offset-2 hover:underline"
-                          >
-                            {entry.linkFollowUp}
-                          </a>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <CopyLinkButton url={entry.linkFollowUp} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-              {/* Cards — telas pequenas (a URL crua não cabe numa coluna estreita) */}
-              <ul className="divide-y md:hidden">
-                {result.data.map((entry) => (
-                  <li key={`${entry.condominio}-${entry.semana}`}>
-                    <FollowUpCard entry={entry} />
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
+            {/* Cards — telas pequenas (a URL crua não cabe numa coluna estreita) */}
+            <ul className="space-y-4 md:hidden">
+              {result.data.map((entry) => (
+                <li key={`${entry.condominio}-${entry.semana}`}>
+                  <FollowUpCard entry={entry} />
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
     </main>
   );
@@ -138,7 +138,7 @@ function GerenciarPage() {
 
 function FollowUpCard({ entry }: { entry: FollowUpEntry }) {
   return (
-    <div className="space-y-3 py-8 first:pt-0 last:pb-0">
+    <div className="bg-card space-y-3 rounded-xl border p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <p className="text-foreground font-medium">{entry.condominio}</p>
         <span className="bg-brand-green/10 text-brand-green shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold">
