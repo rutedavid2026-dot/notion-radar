@@ -14,9 +14,10 @@ type Props = {
   title: string;
   description: string;
   rows: Demanda[];
+  showCondominio?: boolean;
 };
 
-export function DemandaSectionTable({ title, description, rows }: Props) {
+export function DemandaSectionTable({ title, description, rows, showCondominio }: Props) {
   return (
     <div className="bg-card overflow-hidden rounded-xl border shadow-sm">
       <div className="border-b p-5">
@@ -51,6 +52,11 @@ export function DemandaSectionTable({ title, description, rows }: Props) {
                       <User className="size-3.5 shrink-0" />
                       <span className="truncate">{r.responsavel}</span>
                     </div>
+                    {showCondominio && (
+                      <p className="text-muted-foreground/80 mt-1 text-xs font-medium">
+                        {r.condominio}
+                      </p>
+                    )}
                     <div className="text-muted-foreground/80 mt-1 text-xs">
                       {formatDatePt(r.criadaEm)}
                       {(r.historico || r.ultimaAtualizacao) && (
@@ -69,17 +75,23 @@ export function DemandaSectionTable({ title, description, rows }: Props) {
           <div className="hidden overflow-x-auto sm:block">
             <Table className="table-fixed">
               <colgroup>
-                <col className="w-[30%]" />
-                <col className="w-[18%]" />
+                <col className={showCondominio ? "w-[24%]" : "w-[30%]"} />
+                {showCondominio && <col className="w-[16%]" />}
+                <col className={showCondominio ? "w-[14%]" : "w-[18%]"} />
                 <col className="w-[12%]" />
                 <col className="w-[14%]" />
-                <col className="w-[26%]" />
+                <col className={showCondominio ? "w-[20%]" : "w-[26%]"} />
               </colgroup>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="bg-brand-green text-center font-semibold text-white">
                     Demanda
                   </TableHead>
+                  {showCondominio && (
+                    <TableHead className="bg-brand-green text-center font-semibold text-white">
+                      Condomínio
+                    </TableHead>
+                  )}
                   <TableHead className="bg-brand-green text-center font-semibold text-white">
                     Responsável
                   </TableHead>
@@ -107,6 +119,11 @@ export function DemandaSectionTable({ title, description, rows }: Props) {
                         {r.demanda}
                       </a>
                     </TableCell>
+                    {showCondominio && (
+                      <TableCell className="text-muted-foreground text-center align-top text-sm">
+                        {r.condominio}
+                      </TableCell>
+                    )}
                     <TableCell className="text-muted-foreground text-center align-top text-sm">
                       {r.responsavel}
                     </TableCell>

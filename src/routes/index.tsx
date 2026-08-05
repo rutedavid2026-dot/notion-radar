@@ -54,6 +54,17 @@ function IndexPage() {
             </p>
           ) : (
             <ul className="mt-4 divide-y">
+              {result.data.length > 1 && (
+                <li>
+                  <Link
+                    to="/relatorio-geral"
+                    className="text-foreground hover:text-brand-green flex items-center justify-between py-3 text-sm font-medium transition-colors"
+                  >
+                    Relatório consolidado (todos os condomínios)
+                    <span aria-hidden>→</span>
+                  </Link>
+                </li>
+              )}
               {result.data.map((c) => (
                 <li key={c.condominio}>
                   <Link

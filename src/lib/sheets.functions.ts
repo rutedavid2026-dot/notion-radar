@@ -264,8 +264,13 @@ type HistoricoSource = { condominio: string | null; id: string | null; gid: stri
 // spreadsheet, GID por linha da planilha índice). Sem registro cadastrado,
 // cai pra aba legada única (compatibilidade com o deploy original).
 // `condominioSlug` restringe a busca a um único condomínio (página por
-// condomínio) — sem ele, agrega todas as abas cadastradas.
-async function resolveHistoricoSources(condominioSlug?: string): Promise<HistoricoSource[]> {
+// condomínio); `condominioSlugs` restringe a um subconjunto (página
+// consolidada com filtro de condomínios) — sem nenhum dos dois, agrega todas
+// as abas cadastradas.
+async function resolveHistoricoSources(
+  condominioSlug?: string,
+  condominioSlugs?: string[],
+): Promise<HistoricoSource[]> {
   const registry = await getCondominiosRegistry();
   const comAba = registry.data.filter((r) => r.historicoGid);
   const fontes: HistoricoSource[] =
@@ -273,15 +278,19 @@ async function resolveHistoricoSources(condominioSlug?: string): Promise<Histori
       ? comAba.map((r) => ({ condominio: r.condominio, id: r.id, gid: r.historicoGid }))
       : [{ condominio: null, id: null, gid: HISTORICO_GID_LEGADO }];
 
-  if (!condominioSlug) return fontes;
+  const slugs = condominioSlugs && condominioSlugs.length > 0 ? condominioSlugs : condominioSlug ? [condominioSlug] : null;
+  if (!slugs) return fontes;
   // `condominio === null` é o fallback legado (single-tenant) — mantido mesmo
-  // com slug pedido, já que nesse caso não há como confirmar de antemão qual
-  // condomínio é sem ler as linhas da aba.
-  return fontes.filter((f) => f.condominio === null || f.id === condominioSlug);
+  // com slug(s) pedido(s), já que nesse caso não há como confirmar de
+  // antemão qual condomínio é sem ler as linhas da aba.
+  return fontes.filter((f) => f.condominio === null || (f.id && slugs.includes(f.id)));
 }
 
-async function fetchAllHistoricoRows(condominioSlug?: string): Promise<RawRow[]> {
-  const sources = await resolveHistoricoSources(condominioSlug);
+async function fetchAllHistoricoRows(
+  condominioSlug?: string,
+  condominioSlugs?: string[],
+): Promise<RawRow[]> {
+  const sources = await resolveHistoricoSources(condominioSlug, condominioSlugs);
   const settled = await Promise.allSettled(sources.map((s) => fetchHistoricoRows(s.gid)));
 
   const failures = settled.filter((s) => s.status === "rejected");
@@ -301,9 +310,12 @@ async function fetchAllHistoricoRows(condominioSlug?: string): Promise<RawRow[]>
 }
 
 export const getHistoricoSemana = createServerFn({ method: "GET" })
-  .validator((input: unknown) => input as { semanaInicio: string; condominioSlug?: string })
+  .validator(
+    (input: unknown) =>
+      input as { semanaInicio: string; condominioSlug?: string; condominioSlugs?: string[] },
+  )
   .handler(async ({ data }): Promise<HistoricoResult> => {
-    const all = await fetchAllHistoricoRows(data.condominioSlug);
+    const all = await fetchAllHistoricoRows(data.condominioSlug, data.condominioSlugs);
     const rows = all.filter((r) => r.semanaInicio === data.semanaInicio);
 
     if (rows.length === 0) {
@@ -331,9 +343,11 @@ export const getHistoricoSemana = createServerFn({ method: "GET" })
 // pelo dropdown de filtro, pra não oferecer semanas "fantasma" (calculadas
 // pela fórmula de âncora, mas nunca capturadas pelo Apps Script).
 export const getSemanasDisponiveis = createServerFn({ method: "GET" })
-  .validator((input: unknown) => (input ?? {}) as { condominioSlug?: string })
+  .validator(
+    (input: unknown) => (input ?? {}) as { condominioSlug?: string; condominioSlugs?: string[] },
+  )
   .handler(async ({ data }): Promise<SemanaDisponivel[]> => {
-    const all = await fetchAllHistoricoRows(data.condominioSlug);
+    const all = await fetchAllHistoricoRows(data.condominioSlug, data.condominioSlugs);
     const map = new Map<number, SemanaDisponivel>();
     for (const r of all) {
       if (!r.semanaN || map.has(r.semanaN)) continue;
