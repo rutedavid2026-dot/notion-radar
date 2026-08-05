@@ -148,6 +148,14 @@ function FollowUpCard({ entry }: { entry: FollowUpEntry }) {
       <p className="text-muted-foreground text-sm">
         {formatDatePt(entry.dataInicio)} a {formatDatePt(entry.dataTermino)}
       </p>
+      <a
+        href={entry.linkFollowUp}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-brand-green hover:text-brand-green/80 block text-sm break-all underline-offset-2 hover:underline"
+      >
+        {entry.linkFollowUp}
+      </a>
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild type="button" variant="outline" size="sm">
           <a href={entry.linkFollowUp} target="_blank" rel="noopener noreferrer">
