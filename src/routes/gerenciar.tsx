@@ -138,7 +138,7 @@ function GerenciarPage() {
 
 function FollowUpCard({ entry }: { entry: FollowUpEntry }) {
   return (
-    <div className="space-y-3 py-6 first:pt-0 last:pb-0">
+    <div className="space-y-3 py-8 first:pt-0 last:pb-0">
       <div className="flex items-start justify-between gap-3">
         <p className="text-foreground font-medium">{entry.condominio}</p>
         <span className="bg-brand-green/10 text-brand-green shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold">
