@@ -110,6 +110,34 @@ async function fetchRegistryEntries(): Promise<{ condominio: string; dbId: strin
   return entries;
 }
 
+// Mesmo motivo do notion.functions.ts: integrações do Notion são presas a um
+// único workspace, e condomínios podem viver em workspaces diferentes —
+// tenta cada token configurado até um conseguir ler a database.
+function getNotionTokens(): string[] {
+  return [process.env.NOTION_API_KEY, process.env.NOTION_API_KEY_2, process.env.NOTION_API_KEY_3].filter(
+    (t): t is string => !!t,
+  );
+}
+
+async function fetchDemandasFromDbAnyToken(
+  dbId: string,
+  condominioOverride?: string,
+): Promise<{ data: Demanda[]; error: string | null }> {
+  const tokens = getNotionTokens();
+  if (tokens.length === 0) {
+    return { data: [], error: "NOTION_API_KEY not configured" };
+  }
+  let last: { data: Demanda[]; error: string | null } = {
+    data: [],
+    error: "NOTION_API_KEY not configured",
+  };
+  for (const token of tokens) {
+    last = await fetchDemandasFromDb(token, dbId, condominioOverride);
+    if (!last.error) return last;
+  }
+  return last;
+}
+
 async function fetchDemandasFromDb(
   token: string,
   dbId: string,
@@ -148,7 +176,11 @@ async function fetchDemandasFromDb(
           status: statusValue(p["Status"]) || "Não iniciado",
           prioridade: prioridadeValue(p["Prioridade"]) || "Baixa",
           condominio: condominioOverride || selectName(p["Condomínio"]) || "—",
-          area: richText(p["Área"]) || multiSelectJoined(p["Setor/Demanda"]) || "Sem categoria",
+          area:
+            richText(p["Área"]) ||
+            multiSelectJoined(p["Setor/Demanda"]) ||
+            multiSelectJoined(p["Setor"]) ||
+            "Sem categoria",
           criadaEm: createdValue(p["Criada em"]) ?? createdValue(p["Criado em"]),
           ultimaAtualizacao: richText(p["Última Atualização"]),
           historico: richText(p["Histórico"]) || richText(p["Histórico/Evidências"]),
@@ -168,8 +200,7 @@ async function fetchDemandasFromDb(
 // Agrega todos os condomínios cadastrados na planilha índice; sem registro
 // configurado, cai pra database única (env var), igual ao relatório web.
 export async function fetchDemandas(): Promise<{ data: Demanda[]; error: string | null }> {
-  const token = process.env.NOTION_API_KEY;
-  if (!token) {
+  if (getNotionTokens().length === 0) {
     return { data: [], error: "NOTION_API_KEY not configured" };
   }
 
@@ -184,7 +215,7 @@ export async function fetchDemandas(): Promise<{ data: Demanda[]; error: string 
   }
 
   const results = await Promise.all(
-    entries.map((e) => fetchDemandasFromDb(token, e.dbId, e.condominio || undefined)),
+    entries.map((e) => fetchDemandasFromDbAnyToken(e.dbId, e.condominio || undefined)),
   );
 
   const data: Demanda[] = [];

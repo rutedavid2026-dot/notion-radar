@@ -80,15 +80,15 @@ function configurarCondominio(ss, configSheet, linha, condominio, url) {
 // fica vazia e o erro é anotado na célula — a captura semanal tenta de novo
 // na sexta.
 function capturarFotografiaInicial(ss, sheet, dbId, condominio, celulaAba) {
-  const token = PropertiesService.getScriptProperties().getProperty("NOTION_API_KEY");
-  if (!token) {
+  const tokens = getNotionTokens(PropertiesService.getScriptProperties());
+  if (tokens.length === 0) {
     celulaAba.setNote(
       "Aba criada, mas não consegui buscar os dados iniciais: configure NOTION_API_KEY em Script Properties.",
     );
     return;
   }
   try {
-    capturarFotografiaCondominio(ss, sheet, token, dbId, condominio);
+    capturarFotografiaCondominio(ss, sheet, tokens, dbId, condominio);
   } catch (err) {
     celulaAba.setNote(
       "Aba criada, mas a captura inicial falhou: " +

@@ -16,10 +16,25 @@
 const NOTION_VERSION = "2022-06-28";
 const WEEK_ANCHOR = "2025-12-27";
 
+// Integrações do Notion são presas a um único workspace — não existe
+// "compartilhar entre workspaces". Como condomínios podem viver em
+// workspaces diferentes (ex.: um condomínio novo cadastrado num workspace
+// separado do resto da carteira), suportamos até 3 tokens via Script
+// Properties numeradas e tentamos cada um até um conseguir ler a database.
+function getNotionTokens(props) {
+  return ["NOTION_API_KEY", "NOTION_API_KEY_2", "NOTION_API_KEY_3"]
+    .map(function (key) {
+      return props.getProperty(key);
+    })
+    .filter(function (t) {
+      return !!t;
+    });
+}
+
 function capturarTodasFotografias() {
   const props = PropertiesService.getScriptProperties();
-  const token = props.getProperty("NOTION_API_KEY");
-  if (!token) {
+  const tokens = getNotionTokens(props);
+  if (tokens.length === 0) {
     throw new Error("Configure NOTION_API_KEY em Script Properties.");
   }
 
@@ -58,7 +73,7 @@ function capturarTodasFotografias() {
     const id = String(row[COL_ID - 1] || "").trim() || slugifyCondominio(condominio);
 
     try {
-      capturarFotografiaCondominio(ss, sheet, token, dbId, condominio);
+      capturarFotografiaCondominio(ss, sheet, tokens, dbId, condominio);
       registrarFollowUpSemana(followupSheet, condominio, id, semana);
     } catch (err) {
       erros.push(condominio + ": " + err.message);
@@ -95,10 +110,10 @@ function configurarTriggerSemanal() {
 // Compartilhada entre a captura semanal (loop acima) e a captura inicial
 // disparada assim que a aba é criada (GerenciarCondominios.gs), pra não
 // deixar o condomínio novo sem dado nenhum até a próxima sexta-feira.
-function capturarFotografiaCondominio(ss, sheet, token, dbId, condominio) {
+function capturarFotografiaCondominio(ss, sheet, tokens, dbId, condominio) {
   const semana = semanaAtual();
   const capturadoEm = new Date();
-  const demandas = buscarDemandas(token, dbId, condominio);
+  const demandas = buscarDemandasComTokens(tokens, dbId, condominio);
   removerSemanaExistente(sheet, semana.start);
   const rows = demandas.map(function (d) {
     return [
@@ -161,6 +176,22 @@ function removerSemanaExistente(sheet, semanaInicio) {
   }
 }
 
+// Tenta cada token até um conseguir ler a database inteira (todas as
+// páginas). O erro "object_not_found" do Notion é o mesmo tanto pra ID
+// errado quanto pra database de um workspace que aquele token não alcança —
+// não dá pra distinguir os dois casos, então tentamos todos os disponíveis.
+function buscarDemandasComTokens(tokens, databaseId, condominioOverride) {
+  let ultimoErro = null;
+  for (let i = 0; i < tokens.length; i++) {
+    try {
+      return buscarDemandas(tokens[i], databaseId, condominioOverride);
+    } catch (err) {
+      ultimoErro = err;
+    }
+  }
+  throw ultimoErro;
+}
+
 function buscarDemandas(token, databaseId, condominioOverride) {
   const headers = { Authorization: "Bearer " + token, "Notion-Version": NOTION_VERSION };
   const results = [];
@@ -197,7 +228,11 @@ function mapPage(page, condominioOverride) {
     status: statusValue(p["Status"]) || "Nao iniciado",
     prioridade: prioridadeValue(p["Prioridade"]) || "Baixa",
     condominio: condominioOverride || selectName(p["Condomínio"]) || "-",
-    area: richText(p["Área"]) || multiSelectJoined(p["Setor/Demanda"]) || "Sem categoria",
+    area:
+      richText(p["Área"]) ||
+      multiSelectJoined(p["Setor/Demanda"]) ||
+      multiSelectJoined(p["Setor"]) ||
+      "Sem categoria",
     criadaEm: createdValue(p["Criada em"]) || createdValue(p["Criado em"]) || "",
     ultimaAtualizacao: richText(p["Última Atualização"]),
     historico: richText(p["Histórico"]) || richText(p["Histórico/Evidências"]),

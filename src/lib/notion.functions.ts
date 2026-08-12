@@ -117,6 +117,37 @@ function createdValue(prop: any): string | null {
   return prop.date?.start ?? null;
 }
 
+// Integrações do Notion são presas a um único workspace — não existe
+// "compartilhar entre workspaces". Como os condomínios podem viver em
+// workspaces diferentes (ex.: Jazz Club fica num workspace separado do
+// Miragio/Vivendas), suportamos múltiplos tokens via env vars numeradas e
+// tentamos cada um até um funcionar pra aquela database específica.
+function getNotionTokens(): string[] {
+  return [process.env.NOTION_API_KEY, process.env.NOTION_API_KEY_2, process.env.NOTION_API_KEY_3].filter(
+    (t): t is string => !!t,
+  );
+}
+
+// Tenta cada token configurado até um conseguir ler a database (o erro
+// "object_not_found" do Notion é o mesmo tanto pra ID errado quanto pra
+// database de um workspace que aquele token não alcança — não dá pra
+// distinguir os dois casos, então tentamos todos os tokens disponíveis).
+async function fetchDemandasFromDbAnyToken(
+  dbId: string,
+  condominioOverride?: string,
+): Promise<GetDemandasResult> {
+  const tokens = getNotionTokens();
+  if (tokens.length === 0) {
+    return { data: [], error: "NOTION_API_KEY não configurada." };
+  }
+  let last: GetDemandasResult = { data: [], error: "NOTION_API_KEY não configurada." };
+  for (const token of tokens) {
+    last = await fetchDemandasFromDb(token, dbId, condominioOverride);
+    if (!last.error) return last;
+  }
+  return last;
+}
+
 async function fetchDemandasFromDb(
   token: string,
   dbId: string,
@@ -164,7 +195,11 @@ async function fetchDemandasFromDb(
           status: statusValue(p["Status"]) || "Não iniciado",
           prioridade: prioridadeValue(p["Prioridade"]) || "Baixa",
           condominio: condominioOverride || selectName(p["Condomínio"]) || "—",
-          area: richText(p["Área"]) || multiSelectJoined(p["Setor/Demanda"]) || "Sem categoria",
+          area:
+            richText(p["Área"]) ||
+            multiSelectJoined(p["Setor/Demanda"]) ||
+            multiSelectJoined(p["Setor"]) ||
+            "Sem categoria",
           criadaEm: createdValue(p["Criada em"]) ?? createdValue(p["Criado em"]),
           ultimaAtualizacao: richText(p["Última Atualização"]),
           historico: richText(p["Histórico"]) || richText(p["Histórico/Evidências"]),
@@ -194,11 +229,7 @@ async function fetchDemandasFromDb(
 // enquanto um condomínio ainda não está cadastrado na planilha índice.
 export const getDemandas = createServerFn({ method: "GET" }).handler(
   async (): Promise<GetDemandasResult> => {
-    const token = process.env.NOTION_API_KEY;
-    if (!token) {
-      return { data: [], error: "NOTION_API_KEY não configurada." };
-    }
-    return fetchDemandasFromDb(token, process.env.NOTION_DATABASE_ID ?? NOTION_DATABASE_ID_LEGADO);
+    return fetchDemandasFromDbAnyToken(process.env.NOTION_DATABASE_ID ?? NOTION_DATABASE_ID_LEGADO);
   },
 );
 
@@ -210,8 +241,7 @@ export const getDemandas = createServerFn({ method: "GET" }).handler(
 // isolado em `errors`, carimbado com o nome do condomínio.
 export const getAllDemandas = createServerFn({ method: "GET" }).handler(
   async (): Promise<GetAllDemandasResult> => {
-    const token = process.env.NOTION_API_KEY;
-    if (!token) {
+    if (getNotionTokens().length === 0) {
       return { data: [], errors: [{ condominio: "—", error: "NOTION_API_KEY não configurada." }] };
     }
 
@@ -236,7 +266,7 @@ export const getAllDemandas = createServerFn({ method: "GET" }).handler(
     const results = await Promise.all(
       entries.map(async (entry) => ({
         condominio: entry.condominio,
-        result: await fetchDemandasFromDb(token, entry.dbId, entry.condominio || undefined),
+        result: await fetchDemandasFromDbAnyToken(entry.dbId, entry.condominio || undefined),
       })),
     );
 
@@ -262,8 +292,7 @@ export type GetDemandasCondominioResult = GetDemandasResult & { condominio: stri
 export const getDemandasByCondominio = createServerFn({ method: "GET" })
   .validator((input: unknown) => input as { slug: string })
   .handler(async ({ data }): Promise<GetDemandasCondominioResult> => {
-    const token = process.env.NOTION_API_KEY;
-    if (!token) {
+    if (getNotionTokens().length === 0) {
       return { data: [], error: "NOTION_API_KEY não configurada.", condominio: null };
     }
 
@@ -271,15 +300,14 @@ export const getDemandasByCondominio = createServerFn({ method: "GET" })
     const entry = registry.data.find((r) => r.id === data.slug);
 
     if (entry) {
-      const result = await fetchDemandasFromDb(token, entry.notionDatabaseId, entry.condominio);
+      const result = await fetchDemandasFromDbAnyToken(entry.notionDatabaseId, entry.condominio);
       return { ...result, condominio: entry.condominio };
     }
 
     // Planilha índice ainda vazia — cai pro fallback legado de database única
     // e confirma que o nome do condomínio ali bate com o slug pedido.
     if (registry.data.length === 0) {
-      const result = await fetchDemandasFromDb(
-        token,
+      const result = await fetchDemandasFromDbAnyToken(
         process.env.NOTION_DATABASE_ID ?? NOTION_DATABASE_ID_LEGADO,
       );
       const nomeReal = result.data[0]?.condominio ?? null;
