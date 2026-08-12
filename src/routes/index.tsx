@@ -1,12 +1,4 @@
-import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { getCondominiosRegistry } from "@/lib/sheets.functions";
-
-const registryQueryOptions = queryOptions({
-  queryKey: ["sheets", "registry"],
-  queryFn: () => getCondominiosRegistry(),
-  staleTime: 60_000,
-});
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -14,17 +6,14 @@ export const Route = createFileRoute("/")({
       { title: "Equipe Síndicas — Relatório Semanal" },
       {
         name: "description",
-        content: "Escolha um condomínio para ver o relatório semanal de demandas.",
+        content: "Dashboard consolidado e gerenciamento de links dos condomínios.",
       },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(registryQueryOptions),
   component: IndexPage,
 });
 
 function IndexPage() {
-  const { data: result } = useSuspenseQuery(registryQueryOptions);
-
   return (
     <main className="bg-background min-h-screen">
       <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 md:px-8 md:py-10">
@@ -76,34 +65,6 @@ function IndexPage() {
               →
             </span>
           </Link>
-        </div>
-
-        <div className="bg-card rounded-xl border p-6 shadow-sm">
-          <h1 className="text-brand-green text-xl font-bold tracking-tight">
-            Selecione um condomínio
-          </h1>
-
-          {result.data.length === 0 ? (
-            <p className="text-muted-foreground mt-4 text-sm">
-              {result.error ??
-                "Nenhum condomínio cadastrado ainda na planilha índice (base-gestao-em-movimento)."}
-            </p>
-          ) : (
-            <ul className="mt-4 divide-y">
-              {result.data.map((c) => (
-                <li key={c.condominio}>
-                  <Link
-                    to="/$condominio"
-                    params={{ condominio: c.id }}
-                    className="text-foreground hover:text-brand-green flex items-center justify-between py-3 text-sm font-medium transition-colors"
-                  >
-                    {c.condominio}
-                    <span aria-hidden>→</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
       </div>
     </main>
