@@ -137,9 +137,11 @@ function formulaValue(prop: any): string | null {
 // Miragio/Vivendas), suportamos múltiplos tokens via env vars numeradas e
 // tentamos cada um até um funcionar pra aquela database específica.
 function getNotionTokens(): string[] {
-  return [process.env.NOTION_API_KEY, process.env.NOTION_API_KEY_2, process.env.NOTION_API_KEY_3].filter(
-    (t): t is string => !!t,
-  );
+  return [
+    process.env.NOTION_API_KEY,
+    process.env.NOTION_API_KEY_2,
+    process.env.NOTION_API_KEY_3,
+  ].filter((t): t is string => !!t);
 }
 
 // Tenta cada token configurado até um conseguir ler a database (o erro
@@ -235,7 +237,8 @@ async function fetchDemandasFromDb(
             dateValue(p["Concluído em"]) ??
             dateValue(p["Data de conclusão"]) ??
             dateValue(p["Data de Conclusão"]),
-          situacaoPrazo: formulaValue(p["Situação do Prazo"]) || richText(p["Situação do Prazo"]) || null,
+          situacaoPrazo:
+            formulaValue(p["Situação do Prazo"]) || richText(p["Situação do Prazo"]) || null,
         });
       }
 

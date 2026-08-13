@@ -286,7 +286,12 @@ async function resolveHistoricoSources(
       ? comAba.map((r) => ({ condominio: r.condominio, id: r.id, gid: r.historicoGid }))
       : [{ condominio: null, id: null, gid: HISTORICO_GID_LEGADO }];
 
-  const slugs = condominioSlugs && condominioSlugs.length > 0 ? condominioSlugs : condominioSlug ? [condominioSlug] : null;
+  const slugs =
+    condominioSlugs && condominioSlugs.length > 0
+      ? condominioSlugs
+      : condominioSlug
+        ? [condominioSlug]
+        : null;
   if (!slugs) return fontes;
   // `condominio === null` é o fallback legado (single-tenant) — mantido mesmo
   // com slug(s) pedido(s), já que nesse caso não há como confirmar de

@@ -10,21 +10,31 @@ type Props = {
   andamento: number;
   pendentes: number;
   urgentes: number;
+  atrasadas: number;
 };
 
-export function KpiCards({ total, concluidas, canceladas, andamento, pendentes, urgentes }: Props) {
+export function KpiCards({
+  total,
+  concluidas,
+  canceladas,
+  andamento,
+  pendentes,
+  urgentes,
+  atrasadas,
+}: Props) {
   const kpis: Kpi[] = [
-    { label: "Total de demandas", value: total },
+    { label: "Total de tarefas", value: total },
     { label: "Concluídas", value: concluidas },
     { label: "Em andamento", value: andamento },
     { label: "Pendentes", value: pendentes },
     { label: "Urgentes", value: urgentes },
+    { label: "Atrasadas", value: atrasadas },
     ...(canceladas > 0 ? [{ label: "Canceladas", value: canceladas }] : []),
   ];
 
   return (
     <div
-      className={`grid grid-cols-2 gap-3 md:grid-cols-3 ${kpis.length > 5 ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}
+      className={`grid grid-cols-2 gap-3 md:grid-cols-3 ${kpis.length > 6 ? "lg:grid-cols-7" : "lg:grid-cols-6"}`}
     >
       {kpis.map((k) => (
         <div

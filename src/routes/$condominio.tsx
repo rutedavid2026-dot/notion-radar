@@ -9,6 +9,7 @@ import {
   applyFilters,
   brToIso,
   currentWeekNumber,
+  isAtrasada,
   isFechada,
   splitLista,
   statusBucket,
@@ -167,6 +168,7 @@ function ReportPage() {
     let andamento = 0;
     let pendentes = 0;
     let urgentes = 0;
+    let atrasadas = 0;
     filtered.forEach((r) => {
       const b = statusBucket(r.status);
       if (b === "concluido") concluidas += 1;
@@ -174,8 +176,17 @@ function ReportPage() {
       else if (b === "andamento") andamento += 1;
       else pendentes += 1;
       if (temPrioridade(r.prioridade, "Urgente") && !isFechada(r.status)) urgentes += 1;
+      if (isAtrasada(r.situacaoPrazo) && !isFechada(r.status)) atrasadas += 1;
     });
-    return { total: filtered.length, concluidas, canceladas, andamento, pendentes, urgentes };
+    return {
+      total: filtered.length,
+      concluidas,
+      canceladas,
+      andamento,
+      pendentes,
+      urgentes,
+      atrasadas,
+    };
   }, [filtered]);
 
   const altas = useMemo(
@@ -216,7 +227,7 @@ function ReportPage() {
     ? (historicoQuery.data?.capturadoEm ?? null)
     : dataUltimaEdicaoLive;
 
-  const descricao = `Este follow-up apresenta a leitura consolidada das demandas do ${condominioLabel}, com foco em demanda, data de criação, status e última atualização registrada. Foram consideradas ${kpis.total} tarefa${kpis.total === 1 ? "" : "s"} no total; as concluídas aparecem nos gráficos e totais, e o detalhamento operacional prioriza as demandas ainda em movimento.`;
+  const descricao = `Este follow-up apresenta a leitura consolidada das tarefas do ${condominioLabel}, com foco em tarefa, data de criação, status e última atualização registrada. Foram consideradas ${kpis.total} tarefa${kpis.total === 1 ? "" : "s"} no total; as concluídas aparecem nos gráficos e totais, e o detalhamento operacional prioriza as tarefas ainda em movimento.`;
 
   return (
     <main className="bg-background min-h-screen">
@@ -267,24 +278,25 @@ function ReportPage() {
               emMovimento={kpis.andamento + kpis.pendentes}
               urgentes={kpis.urgentes}
               altas={altas}
+              atrasadas={kpis.atrasadas}
             />
 
             <DemandaSectionTable
-              title="Demandas em Aberto - Prioridade Urgente e Alta"
-              description="Detalhamento das demandas que exigem acompanhamento mais próximo. As demandas concluídas não foram detalhadas nesta seção."
+              title="Tarefas em Aberto - Prioridade Urgente e Alta"
+              description="Detalhamento das tarefas que exigem acompanhamento mais próximo. As tarefas concluídas não foram detalhadas nesta seção."
               rows={prioritarias}
             />
 
             <DemandaSectionTable
-              title="Demandas em Aberto - Acompanhamento Operacional"
-              description="Demais demandas em andamento, não iniciadas, agendadas ou aguardando providências."
+              title="Tarefas em Aberto - Acompanhamento Operacional"
+              description="Demais tarefas em andamento, não iniciadas, agendadas ou aguardando providências."
               rows={operacionais}
             />
 
             {construtora.length > 0 && (
               <DemandaSectionTable
-                title="Demandas da Construtora"
-                description="Demandas cuja responsabilidade é da Construtora."
+                title="Tarefas da Construtora"
+                description="Tarefas cuja responsabilidade é da Construtora."
                 rows={construtora}
               />
             )}

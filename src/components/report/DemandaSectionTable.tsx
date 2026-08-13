@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { Demanda } from "@/lib/notion.functions";
-import { formatDatePt } from "@/lib/report-utils";
+import { formatDatePt, situacaoPrazoClass } from "@/lib/report-utils";
 
 type Props = {
   title: string;
@@ -27,7 +27,7 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
 
       {rows.length === 0 ? (
         <p className="text-muted-foreground py-10 text-center text-sm">
-          Nenhuma demanda encontrada para os filtros atuais.
+          Nenhuma tarefa encontrada para os filtros atuais.
         </p>
       ) : (
         <>
@@ -64,9 +64,18 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
                       )}
                     </div>
                   </div>
-                  <span className="border-brand-border bg-brand-cream text-brand-green shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap">
-                    {r.status}
-                  </span>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="border-brand-border bg-brand-cream text-brand-green rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap">
+                      {r.status}
+                    </span>
+                    {r.situacaoPrazo && (
+                      <span
+                        className={`text-xs font-medium whitespace-nowrap ${situacaoPrazoClass(r.situacaoPrazo)}`}
+                      >
+                        {r.situacaoPrazo}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </li>
             ))}
@@ -75,17 +84,18 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
           <div className="hidden overflow-x-auto sm:block">
             <Table className="table-fixed">
               <colgroup>
-                <col className={showCondominio ? "w-[24%]" : "w-[30%]"} />
-                {showCondominio && <col className="w-[16%]" />}
-                <col className={showCondominio ? "w-[14%]" : "w-[18%]"} />
-                <col className="w-[12%]" />
-                <col className="w-[14%]" />
                 <col className={showCondominio ? "w-[20%]" : "w-[26%]"} />
+                {showCondominio && <col className="w-[14%]" />}
+                <col className={showCondominio ? "w-[12%]" : "w-[16%]"} />
+                <col className="w-[9%]" />
+                <col className="w-[10%]" />
+                <col className="w-[13%]" />
+                <col className={showCondominio ? "w-[22%]" : "w-[26%]"} />
               </colgroup>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="bg-brand-green text-center font-semibold text-white">
-                    Demanda
+                    Tarefa
                   </TableHead>
                   {showCondominio && (
                     <TableHead className="bg-brand-green text-center font-semibold text-white">
@@ -100,6 +110,9 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
                   </TableHead>
                   <TableHead className="bg-brand-green text-center font-semibold text-white">
                     Status
+                  </TableHead>
+                  <TableHead className="bg-brand-green text-center font-semibold text-white">
+                    Situação de Prazo
                   </TableHead>
                   <TableHead className="bg-brand-green text-center font-semibold text-white">
                     Última Atualização
@@ -132,6 +145,11 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
                     </TableCell>
                     <TableCell className="text-center align-top whitespace-nowrap">
                       {r.status}
+                    </TableCell>
+                    <TableCell
+                      className={`text-center align-top text-sm font-medium whitespace-nowrap ${situacaoPrazoClass(r.situacaoPrazo)}`}
+                    >
+                      {r.situacaoPrazo || "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground align-top text-sm">
                       {r.historico || r.ultimaAtualizacao || "—"}

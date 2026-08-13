@@ -45,6 +45,23 @@ export function isFechada(s: string): boolean {
   return b === "concluido" || b === "cancelado";
 }
 
+// "Situação do Prazo" vem calculada pela fórmula do Notion (Em dia/Atrasada/
+// Concluída no Prazo/Concluída com Atraso) — normaliza pra comparação igual
+// statusIn, pra não depender de acento/maiúscula exatos.
+export function isAtrasada(situacaoPrazo: string | null | undefined): boolean {
+  return normalizeForMatch(situacaoPrazo ?? "") === normalizeForMatch("Atrasada");
+}
+
+// Classe de cor pro badge de Situação do Prazo nas tabelas de demandas.
+export function situacaoPrazoClass(situacaoPrazo: string | null | undefined): string {
+  const v = normalizeForMatch(situacaoPrazo ?? "");
+  if (v === normalizeForMatch("Atrasada")) return "text-destructive";
+  if (v === normalizeForMatch("Concluída com Atraso")) return "text-destructive";
+  if (v === normalizeForMatch("Em dia")) return "text-brand-green";
+  if (v === normalizeForMatch("Concluída no Prazo")) return "text-brand-green";
+  return "text-muted-foreground";
+}
+
 // "Prioridade" e "Responsável" podem vir como multi-seleção do Notion (ex.:
 // "Alta, Grande Investimento" ou "Carina, Roberto") — normaliza pra lista
 // antes de checar pertencimento.
