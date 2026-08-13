@@ -127,6 +127,7 @@ function capturarFotografiaCondominio(ss, sheet, tokens, dbId, condominio) {
       d.status,
       d.prioridade,
       d.area,
+      d.dataInicio,
       d.criadaEm,
       d.ultimaAtualizacao,
       d.historico,
@@ -235,6 +236,7 @@ function mapPage(page, condominioOverride) {
       multiSelectJoined(p["Setor"]) ||
       selectName(p["Setor"]) ||
       "Sem categoria",
+    dataInicio: dateValue(p["Data de Início"]) || dateValue(p["Início"]) || "",
     criadaEm:
       dateValue(p["Data de Início"]) ||
       dateValue(p["Início"]) ||

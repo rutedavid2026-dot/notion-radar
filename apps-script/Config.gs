@@ -26,6 +26,7 @@ const HEADERS_HISTORICO = [
   "Status",
   "Prioridade",
   "Area",
+  "DataInicio",
   "CriadaEm",
   "UltimaAtualizacao",
   "Historico",
