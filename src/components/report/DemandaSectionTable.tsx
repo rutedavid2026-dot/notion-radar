@@ -165,7 +165,7 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
                     Responsável
                   </SortableHead>
                   <SortableHead sortKey="criadaEm" sort={sort} onSort={toggleSort}>
-                    Criada em
+                    Data de Início
                   </SortableHead>
                   <SortableHead sortKey="status" sort={sort} onSort={toggleSort}>
                     Status
