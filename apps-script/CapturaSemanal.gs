@@ -247,8 +247,12 @@ function mapPage(page, condominioOverride) {
     historico: richText(p["Histórico"]) || richText(p["Histórico/Evidências"]),
     dataUltimaEdicao: page.last_edited_time,
     url: page.url,
-    ordem: p["Ordem"] && typeof p["Ordem"].number === "number" ? p["Ordem"].number : "",
-    previsao: dateValue(p["Previsão"]) || dateValue(p["Previsão (em dias)"]) || "",
+    ordem: numberValue(p["Ordem"]) ?? "",
+    // "Previsão"/"Previsão (em dias)" pode ser data (bases antigas) ou
+    // número de dias (bases novas, ex.: Miragio Cacupé/Jazz Club) — usa ??
+    // (não ||) pra não tratar 0 dias como "ausente".
+    previsao:
+      numberValue(p["Previsão (em dias)"]) ?? numberValue(p["Previsão"]) ?? dateValue(p["Previsão"]) ?? "",
     dataPrevista:
       dateValue(p["Data Prevista"]) ||
       formulaValue(p["Data Prevista"]) ||
@@ -275,6 +279,10 @@ function richText(prop) {
 
 function selectName(prop) {
   return (prop && prop.select && prop.select.name) || "";
+}
+
+function numberValue(prop) {
+  return prop && typeof prop.number === "number" ? prop.number : null;
 }
 
 // "Status" pode ser select clássico ou o tipo "status" mais novo do Notion
