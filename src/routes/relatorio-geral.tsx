@@ -1,5 +1,5 @@
 import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { z } from "zod";
@@ -257,6 +257,13 @@ function RelatorioGeralPage() {
             </div>
           </div>
         )}
+
+        <Link
+          to="/"
+          className="text-muted-foreground hover:text-brand-green inline-flex items-center gap-1 text-sm transition-colors"
+        >
+          ← Voltar ao menu
+        </Link>
 
         <Masthead condominio={condominioLabel} />
 
