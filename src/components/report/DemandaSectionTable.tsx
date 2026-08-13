@@ -149,8 +149,19 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
             ))}
           </ul>
 
-          <div className="hidden overflow-x-auto sm:block">
-            <Table>
+          <div className="hidden sm:block">
+            <Table className="table-fixed">
+              <colgroup>
+                <col className={showCondominio ? "w-[17%]" : "w-[20%]"} />
+                {showCondominio && <col className="w-[10%]" />}
+                <col className={showCondominio ? "w-[10%]" : "w-[12%]"} />
+                <col className={showCondominio ? "w-[8%]" : "w-[9%]"} />
+                <col className={showCondominio ? "w-[8%]" : "w-[9%]"} />
+                <col className={showCondominio ? "w-[9%]" : "w-[10%]"} />
+                <col className={showCondominio ? "w-[11%]" : "w-[12%]"} />
+                <col className={showCondominio ? "w-[9%]" : "w-[10%]"} />
+                <col className="w-[18%]" />
+              </colgroup>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <SortableHead sortKey="demanda" sort={sort} onSort={toggleSort}>
@@ -187,7 +198,7 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
               <TableBody>
                 {sortedRows.map((r, i) => (
                   <TableRow key={r.id} className={`${rowHighlightClass(r, i)} hover:bg-muted/50`}>
-                    <TableCell className="min-w-[220px] align-top">
+                    <TableCell className="p-1.5 align-top text-xs break-words">
                       <a
                         href={r.url}
                         target="_blank"
@@ -198,31 +209,31 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
                       </a>
                     </TableCell>
                     {showCondominio && (
-                      <TableCell className="text-muted-foreground text-center align-top text-sm whitespace-nowrap">
+                      <TableCell className="text-muted-foreground p-1.5 text-center align-top text-xs break-words">
                         {r.condominio}
                       </TableCell>
                     )}
-                    <TableCell className="text-muted-foreground text-center align-top text-sm whitespace-nowrap">
+                    <TableCell className="text-muted-foreground p-1.5 text-center align-top text-xs break-words">
                       {r.responsavel}
                     </TableCell>
-                    <TableCell className="text-center align-top whitespace-nowrap">
+                    <TableCell className="p-1.5 text-center align-top text-xs">
                       {formatDatePt(r.criadaEm)}
                     </TableCell>
-                    <TableCell className="text-center align-top whitespace-nowrap">
+                    <TableCell className="p-1.5 text-center align-top text-xs break-words">
                       {r.status}
                     </TableCell>
                     <TableCell
-                      className={`text-center align-top text-sm font-medium whitespace-nowrap ${situacaoPrazoClass(r.situacaoPrazo)}`}
+                      className={`p-1.5 text-center align-top text-xs font-medium ${situacaoPrazoClass(r.situacaoPrazo)}`}
                     >
                       {r.situacaoPrazo || "—"}
                     </TableCell>
-                    <TableCell className="text-center align-top whitespace-nowrap">
+                    <TableCell className="p-1.5 text-center align-top text-xs">
                       {r.dataPrevista || "—"}
                     </TableCell>
-                    <TableCell className="text-center align-top whitespace-nowrap">
+                    <TableCell className="p-1.5 text-center align-top text-xs">
                       {formatDatePt(r.concluidoEm)}
                     </TableCell>
-                    <TableCell className="text-muted-foreground min-w-[200px] align-top text-sm">
+                    <TableCell className="text-muted-foreground p-1.5 align-top text-xs break-words">
                       {r.historico || r.ultimaAtualizacao || "—"}
                     </TableCell>
                   </TableRow>
@@ -251,12 +262,12 @@ function SortableHead({
   const Icon = active ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
   return (
     <TableHead
-      className="bg-brand-green cursor-pointer text-center font-semibold whitespace-nowrap text-white select-none"
+      className="bg-brand-green h-auto cursor-pointer p-1.5 text-center text-xs font-semibold text-white select-none"
       onClick={() => onSort(sortKey)}
     >
-      <span className="inline-flex items-center justify-center gap-1">
+      <span className="inline-flex items-center justify-center gap-1 leading-tight">
         {children}
-        <Icon className={`size-3.5 shrink-0 ${active ? "opacity-100" : "opacity-50"}`} />
+        <Icon className={`size-3 shrink-0 ${active ? "opacity-100" : "opacity-50"}`} />
       </span>
     </TableHead>
   );
