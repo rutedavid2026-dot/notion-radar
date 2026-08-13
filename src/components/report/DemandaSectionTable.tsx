@@ -1,4 +1,5 @@
-import { User } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown, User } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -8,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { Demanda } from "@/lib/notion.functions";
-import { formatDatePt, situacaoPrazoClass } from "@/lib/report-utils";
+import { brDateSortKey, formatDatePt, isAtrasada, situacaoPrazoClass } from "@/lib/report-utils";
 
 type Props = {
   title: string;
@@ -17,7 +18,67 @@ type Props = {
   showCondominio?: boolean;
 };
 
+type SortKey =
+  | "demanda"
+  | "condominio"
+  | "responsavel"
+  | "criadaEm"
+  | "status"
+  | "situacaoPrazo"
+  | "dataPrevista"
+  | "concluidoEm"
+  | "ultimaAtualizacao";
+
+type SortState = { key: SortKey; dir: "asc" | "desc" } | null;
+
+function sortValue(r: Demanda, key: SortKey): string {
+  switch (key) {
+    case "demanda":
+      return r.demanda;
+    case "condominio":
+      return r.condominio;
+    case "responsavel":
+      return r.responsavel;
+    case "criadaEm":
+      return r.criadaEm ?? "";
+    case "status":
+      return r.status;
+    case "situacaoPrazo":
+      return r.situacaoPrazo ?? "";
+    case "dataPrevista":
+      return brDateSortKey(r.dataPrevista);
+    case "concluidoEm":
+      return r.concluidoEm ?? "";
+    case "ultimaAtualizacao":
+      return r.historico || r.ultimaAtualizacao || "";
+  }
+}
+
+function rowHighlightClass(r: Demanda, i: number): string {
+  if (isAtrasada(r.situacaoPrazo)) return "bg-destructive/10";
+  return i % 2 === 1 ? "bg-brand-cream/40" : "bg-card";
+}
+
 export function DemandaSectionTable({ title, description, rows, showCondominio }: Props) {
+  const [sort, setSort] = useState<SortState>(null);
+
+  const sortedRows = useMemo(() => {
+    if (!sort) return rows;
+    const { key, dir } = sort;
+    const factor = dir === "asc" ? 1 : -1;
+    return [...rows].sort(
+      (a, b) => sortValue(a, key).localeCompare(sortValue(b, key), "pt-BR") * factor,
+    );
+  }, [rows, sort]);
+
+  const toggleSort = (key: SortKey) => {
+    setSort((prev) => {
+      if (!prev || prev.key !== key) return { key, dir: "asc" };
+      if (prev.dir === "asc") return { key, dir: "desc" };
+      return null;
+    });
+  };
+
   return (
     <div className="bg-card overflow-hidden rounded-xl border shadow-sm">
       <div className="border-b p-5">
@@ -32,10 +93,10 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
       ) : (
         <>
           <ul className="sm:hidden">
-            {rows.map((r, i) => (
+            {sortedRows.map((r, i) => (
               <li
                 key={r.id}
-                className={i % 2 === 1 ? "bg-brand-cream/40" : "bg-card"}
+                className={rowHighlightClass(r, i)}
                 style={{ borderBottom: "0.5px solid var(--brand-border)" }}
               >
                 <div className="flex items-start justify-between gap-3 px-4 py-3">
@@ -63,6 +124,13 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
                         <span> · {r.historico || r.ultimaAtualizacao}</span>
                       )}
                     </div>
+                    {(r.dataPrevista || r.concluidoEm) && (
+                      <div className="text-muted-foreground/80 mt-1 text-xs">
+                        {r.dataPrevista && <span>Previsto: {r.dataPrevista}</span>}
+                        {r.dataPrevista && r.concluidoEm && <span> · </span>}
+                        {r.concluidoEm && <span>Concluído: {formatDatePt(r.concluidoEm)}</span>}
+                      </div>
+                    )}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
                     <span className="border-brand-border bg-brand-cream text-brand-green rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap">
@@ -82,47 +150,44 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
           </ul>
 
           <div className="hidden overflow-x-auto sm:block">
-            <Table className="table-fixed">
-              <colgroup>
-                <col className={showCondominio ? "w-[20%]" : "w-[26%]"} />
-                {showCondominio && <col className="w-[14%]" />}
-                <col className={showCondominio ? "w-[12%]" : "w-[16%]"} />
-                <col className="w-[9%]" />
-                <col className="w-[10%]" />
-                <col className="w-[13%]" />
-                <col className={showCondominio ? "w-[22%]" : "w-[26%]"} />
-              </colgroup>
+            <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="bg-brand-green text-center font-semibold text-white">
+                  <SortableHead sortKey="demanda" sort={sort} onSort={toggleSort}>
                     Tarefa
-                  </TableHead>
+                  </SortableHead>
                   {showCondominio && (
-                    <TableHead className="bg-brand-green text-center font-semibold text-white">
+                    <SortableHead sortKey="condominio" sort={sort} onSort={toggleSort}>
                       Condomínio
-                    </TableHead>
+                    </SortableHead>
                   )}
-                  <TableHead className="bg-brand-green text-center font-semibold text-white">
+                  <SortableHead sortKey="responsavel" sort={sort} onSort={toggleSort}>
                     Responsável
-                  </TableHead>
-                  <TableHead className="bg-brand-green text-center font-semibold text-white">
+                  </SortableHead>
+                  <SortableHead sortKey="criadaEm" sort={sort} onSort={toggleSort}>
                     Criada em
-                  </TableHead>
-                  <TableHead className="bg-brand-green text-center font-semibold text-white">
+                  </SortableHead>
+                  <SortableHead sortKey="status" sort={sort} onSort={toggleSort}>
                     Status
-                  </TableHead>
-                  <TableHead className="bg-brand-green text-center font-semibold text-white">
+                  </SortableHead>
+                  <SortableHead sortKey="situacaoPrazo" sort={sort} onSort={toggleSort}>
                     Situação de Prazo
-                  </TableHead>
-                  <TableHead className="bg-brand-green text-center font-semibold text-white">
+                  </SortableHead>
+                  <SortableHead sortKey="dataPrevista" sort={sort} onSort={toggleSort}>
+                    Data Prevista de Conclusão
+                  </SortableHead>
+                  <SortableHead sortKey="concluidoEm" sort={sort} onSort={toggleSort}>
+                    Data de Conclusão
+                  </SortableHead>
+                  <SortableHead sortKey="ultimaAtualizacao" sort={sort} onSort={toggleSort}>
                     Última Atualização
-                  </TableHead>
+                  </SortableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((r, i) => (
-                  <TableRow key={r.id} className={i % 2 === 1 ? "bg-brand-cream/40" : undefined}>
-                    <TableCell className="align-top">
+                {sortedRows.map((r, i) => (
+                  <TableRow key={r.id} className={`${rowHighlightClass(r, i)} hover:bg-muted/50`}>
+                    <TableCell className="min-w-[220px] align-top">
                       <a
                         href={r.url}
                         target="_blank"
@@ -133,11 +198,11 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
                       </a>
                     </TableCell>
                     {showCondominio && (
-                      <TableCell className="text-muted-foreground text-center align-top text-sm">
+                      <TableCell className="text-muted-foreground text-center align-top text-sm whitespace-nowrap">
                         {r.condominio}
                       </TableCell>
                     )}
-                    <TableCell className="text-muted-foreground text-center align-top text-sm">
+                    <TableCell className="text-muted-foreground text-center align-top text-sm whitespace-nowrap">
                       {r.responsavel}
                     </TableCell>
                     <TableCell className="text-center align-top whitespace-nowrap">
@@ -151,7 +216,13 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
                     >
                       {r.situacaoPrazo || "—"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground align-top text-sm">
+                    <TableCell className="text-center align-top whitespace-nowrap">
+                      {r.dataPrevista || "—"}
+                    </TableCell>
+                    <TableCell className="text-center align-top whitespace-nowrap">
+                      {formatDatePt(r.concluidoEm)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground min-w-[200px] align-top text-sm">
                       {r.historico || r.ultimaAtualizacao || "—"}
                     </TableCell>
                   </TableRow>
@@ -162,5 +233,31 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
         </>
       )}
     </div>
+  );
+}
+
+function SortableHead({
+  sortKey,
+  sort,
+  onSort,
+  children,
+}: {
+  sortKey: SortKey;
+  sort: SortState;
+  onSort: (key: SortKey) => void;
+  children: React.ReactNode;
+}) {
+  const active = sort?.key === sortKey;
+  const Icon = active ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <TableHead
+      className="bg-brand-green cursor-pointer text-center font-semibold whitespace-nowrap text-white select-none"
+      onClick={() => onSort(sortKey)}
+    >
+      <span className="inline-flex items-center justify-center gap-1">
+        {children}
+        <Icon className={`size-3.5 shrink-0 ${active ? "opacity-100" : "opacity-50"}`} />
+      </span>
+    </TableHead>
   );
 }

@@ -133,6 +133,7 @@ export function formatDateTimePt(iso: string | null | undefined): string {
 export type Filters = {
   responsavel: string[];
   status: string;
+  situacaoPrazo: string;
 };
 
 export function applyFilters(rows: Demanda[], f: Filters): Demanda[] {
@@ -142,6 +143,7 @@ export function applyFilters(rows: Demanda[], f: Filters): Demanda[] {
       if (!f.responsavel.some((sel) => responsaveisDaLinha.includes(sel))) return false;
     }
     if (f.status && r.status !== f.status) return false;
+    if (f.situacaoPrazo && (r.situacaoPrazo ?? "") !== f.situacaoPrazo) return false;
     return true;
   });
 }
@@ -179,6 +181,16 @@ export function currentWeekNumber(): number {
 export function brToIso(br: string): string {
   const [d, m, y] = br.split("-");
   return `${y}-${m}-${d}`;
+}
+
+// "Data Prevista de Conclusão" chega já formatada como texto DD/MM/YYYY
+// (fórmula do Notion, ver formulaValue em notion.functions.ts) — não dá pra
+// comparar como ISO. Converte pra uma chave YYYYMMDD comparável
+// lexicograficamente, usada só pra ordenação das tabelas.
+export function brDateSortKey(brDate: string | null | undefined): string {
+  if (!brDate) return "";
+  const [d, m, y] = brDate.split("/");
+  return d && m && y ? `${y}${m}${d}` : "";
 }
 
 export function isoToBrDash(iso: string): string {

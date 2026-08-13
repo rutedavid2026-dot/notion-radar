@@ -21,7 +21,7 @@ export function ResumoExecutivo({ emMovimento, urgentes, altas, atrasadas }: Pro
           {urgentes === 1 ? "" : "s"} urgente{urgentes === 1 ? "" : "s"} e {altas} de alta
           prioridade exigem acompanhamento próximo.
         </li>
-        <li className="text-foreground">
+        <li className={atrasadas > 0 ? "text-destructive font-medium" : "text-foreground"}>
           <span className="font-semibold">Prazos:</span> {atrasadas} tarefa
           {atrasadas === 1 ? "" : "s"} {atrasadas === 1 ? "está" : "estão"} atrasada
           {atrasadas === 1 ? "" : "s"} em relação à data prevista de conclusão.

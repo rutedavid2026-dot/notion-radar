@@ -1,6 +1,7 @@
 type Kpi = {
   label: string;
   value: number;
+  destaque?: boolean;
 };
 
 type Props = {
@@ -28,7 +29,7 @@ export function KpiCards({
     { label: "Em andamento", value: andamento },
     { label: "Pendentes", value: pendentes },
     { label: "Urgentes", value: urgentes },
-    { label: "Atrasadas", value: atrasadas },
+    { label: "Atrasadas", value: atrasadas, destaque: atrasadas > 0 },
     ...(canceladas > 0 ? [{ label: "Canceladas", value: canceladas }] : []),
   ];
 
@@ -39,10 +40,30 @@ export function KpiCards({
       {kpis.map((k) => (
         <div
           key={k.label}
-          className="bg-brand-cream border-brand-border rounded-xl border p-4 text-center"
+          className={
+            k.destaque
+              ? "bg-destructive/10 border-destructive/40 rounded-xl border p-4 text-center"
+              : "bg-brand-cream border-brand-border rounded-xl border p-4 text-center"
+          }
         >
-          <div className="text-brand-green text-3xl font-bold">{k.value}</div>
-          <div className="text-muted-foreground mt-1 text-xs font-medium">{k.label}</div>
+          <div
+            className={
+              k.destaque
+                ? "text-destructive text-3xl font-bold"
+                : "text-brand-green text-3xl font-bold"
+            }
+          >
+            {k.value}
+          </div>
+          <div
+            className={
+              k.destaque
+                ? "text-destructive mt-1 text-xs font-semibold"
+                : "text-muted-foreground mt-1 text-xs font-medium"
+            }
+          >
+            {k.label}
+          </div>
         </div>
       ))}
     </div>

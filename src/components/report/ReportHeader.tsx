@@ -46,7 +46,8 @@ export function ReportHeader({
           </>
         ) : (
           <>
-            Período: <span className="text-foreground font-medium">Todas as semanas disponíveis</span>
+            Período:{" "}
+            <span className="text-foreground font-medium">Todas as semanas disponíveis</span>
           </>
         )}
         {congelado && " · Estes dados são fixos e não refletem mudanças feitas depois no Notion."}

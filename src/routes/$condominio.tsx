@@ -68,6 +68,7 @@ const searchSchema = z.object({
   semanafim: dateBrOrTodas,
   responsavel: z.string().optional().default(""),
   status: z.string().optional().default(""),
+  situacaoPrazo: z.string().optional().default(""),
 });
 
 export const Route = createFileRoute("/$condominio")({
@@ -106,8 +107,9 @@ function ReportPage() {
     () => ({
       responsavel: splitLista(search.responsavel),
       status: search.status,
+      situacaoPrazo: search.situacaoPrazo,
     }),
-    [search.responsavel, search.status],
+    [search.responsavel, search.status, search.situacaoPrazo],
   );
 
   const allRows = result.data;
@@ -159,6 +161,10 @@ function ReportPage() {
     [allRows],
   );
   const statuses = useMemo(() => uniqueSorted(allRows.map((r) => r.status)), [allRows]);
+  const situacoesPrazo = useMemo(
+    () => uniqueSorted(allRows.map((r) => r.situacaoPrazo ?? "")),
+    [allRows],
+  );
 
   const filtered = useMemo(() => applyFilters(baseRows, filters), [baseRows, filters]);
 
@@ -261,6 +267,7 @@ function ReportPage() {
           weekOptions={weekOptions}
           responsaveis={responsaveis}
           statuses={statuses}
+          situacoesPrazo={situacoesPrazo}
         />
 
         {isLoadingFoto ? (

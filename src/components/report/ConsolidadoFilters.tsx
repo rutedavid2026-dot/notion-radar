@@ -31,6 +31,7 @@ type SearchState = {
   condominios: string;
   responsavel: string;
   status: string;
+  situacaoPrazo: string;
 };
 
 type WeekOption = { n: number; start: string; end: string };
@@ -42,6 +43,7 @@ type Props = {
   condominioOptions: CondominioOption[];
   responsaveis: string[];
   statuses: string[];
+  situacoesPrazo: string[];
 };
 
 export function ConsolidadoFilters({
@@ -50,6 +52,7 @@ export function ConsolidadoFilters({
   condominioOptions,
   responsaveis,
   statuses,
+  situacoesPrazo,
 }: Props) {
   const navigate = useNavigate({ from: "/relatorio-geral" });
 
@@ -70,6 +73,7 @@ export function ConsolidadoFilters({
         condominios: "",
         responsavel: "",
         status: "",
+        situacaoPrazo: "",
       }),
       resetScroll: false,
     });
@@ -141,6 +145,25 @@ export function ConsolidadoFilters({
             <SelectContent>
               <SelectItem value={ALL}>Todos</SelectItem>
               {statuses.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterBlock>
+
+        <FilterBlock label="Situação de Prazo">
+          <Select
+            value={search.situacaoPrazo || ALL}
+            onValueChange={(v) => update({ situacaoPrazo: v === ALL ? "" : v })}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todas</SelectItem>
+              {situacoesPrazo.map((s) => (
                 <SelectItem key={s} value={s}>
                   {s}
                 </SelectItem>

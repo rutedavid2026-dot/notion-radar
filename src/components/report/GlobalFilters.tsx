@@ -30,6 +30,7 @@ type SearchState = {
   semanafim: string;
   responsavel: string;
   status: string;
+  situacaoPrazo: string;
 };
 
 type WeekOption = { n: number; start: string; end: string };
@@ -39,9 +40,16 @@ type Props = {
   weekOptions: WeekOption[];
   responsaveis: string[];
   statuses: string[];
+  situacoesPrazo: string[];
 };
 
-export function GlobalFilters({ search, weekOptions, responsaveis, statuses }: Props) {
+export function GlobalFilters({
+  search,
+  weekOptions,
+  responsaveis,
+  statuses,
+  situacoesPrazo,
+}: Props) {
   const navigate = useNavigate({ from: "/$condominio" });
 
   // resetScroll: false — trocar um filtro só atualiza os dados da página, não
@@ -61,6 +69,7 @@ export function GlobalFilters({ search, weekOptions, responsaveis, statuses }: P
         semanafim: "",
         responsavel: "",
         status: "",
+        situacaoPrazo: "",
       }),
       resetScroll: false,
     });
@@ -124,6 +133,25 @@ export function GlobalFilters({ search, weekOptions, responsaveis, statuses }: P
             <SelectContent>
               <SelectItem value={ALL}>Todos</SelectItem>
               {statuses.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterBlock>
+
+        <FilterBlock label="Situação de Prazo">
+          <Select
+            value={search.situacaoPrazo || ALL}
+            onValueChange={(v) => update({ situacaoPrazo: v === ALL ? "" : v })}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todas</SelectItem>
+              {situacoesPrazo.map((s) => (
                 <SelectItem key={s} value={s}>
                   {s}
                 </SelectItem>

@@ -77,6 +77,7 @@ const searchSchema = z.object({
   condominios: z.string().optional().default(""),
   responsavel: z.string().optional().default(""),
   status: z.string().optional().default(""),
+  situacaoPrazo: z.string().optional().default(""),
 });
 
 export const Route = createFileRoute("/relatorio-geral")({
@@ -142,8 +143,9 @@ function RelatorioGeralPage() {
     () => ({
       responsavel: splitLista(search.responsavel),
       status: search.status,
+      situacaoPrazo: search.situacaoPrazo,
     }),
-    [search.responsavel, search.status],
+    [search.responsavel, search.status, search.situacaoPrazo],
   );
 
   const isTodasSemanas = search.semanainicio === SEMANA_TODAS;
@@ -185,6 +187,10 @@ function RelatorioGeralPage() {
     [allRows],
   );
   const statuses = useMemo(() => uniqueSorted(allRows.map((r) => r.status)), [allRows]);
+  const situacoesPrazo = useMemo(
+    () => uniqueSorted(allRows.map((r) => r.situacaoPrazo ?? "")),
+    [allRows],
+  );
 
   const filtered = useMemo(() => applyFilters(baseRows, filters), [baseRows, filters]);
 
@@ -300,6 +306,7 @@ function RelatorioGeralPage() {
           condominioOptions={condominioOptions}
           responsaveis={responsaveis}
           statuses={statuses}
+          situacoesPrazo={situacoesPrazo}
         />
 
         {isLoadingFoto ? (
