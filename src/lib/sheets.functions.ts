@@ -262,6 +262,7 @@ async function fetchHistoricoRows(gid: string): Promise<RawRow[]> {
       previsao: r[c("PrevisaoEmDias")] || r[c("Previsao")] || null,
       dataPrevista: r[c("DataPrevisaoConclusao")] || r[c("DataPrevista")] || null,
       concluidoEm: r[c("DataConclusao")] || r[c("ConcluidoEm")] || null,
+      situacaoPrazo: r[c("SituacaoPrazo")] || null,
     }));
 }
 

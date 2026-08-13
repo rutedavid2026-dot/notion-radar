@@ -25,6 +25,7 @@ export type Demanda = {
   previsao: string | null;
   dataPrevista: string | null;
   concluidoEm: string | null;
+  situacaoPrazo: string | null;
 };
 
 export type GetDemandasResult = {
@@ -234,6 +235,7 @@ async function fetchDemandasFromDb(
             dateValue(p["Concluído em"]) ??
             dateValue(p["Data de conclusão"]) ??
             dateValue(p["Data de Conclusão"]),
+          situacaoPrazo: formulaValue(p["Situação do Prazo"]) || richText(p["Situação do Prazo"]) || null,
         });
       }
 

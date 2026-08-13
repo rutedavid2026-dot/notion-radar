@@ -138,6 +138,7 @@ function capturarFotografiaCondominio(ss, sheet, tokens, dbId, condominio) {
       d.previsao,
       d.dataPrevista,
       d.concluidoEm,
+      d.situacaoPrazo,
     ];
   });
   if (rows.length > 0) {
@@ -263,6 +264,10 @@ function mapPage(page, condominioOverride) {
       dateValue(p["Data de conclusão"]) ||
       dateValue(p["Data de Conclusão"]) ||
       "",
+    // "Situação do Prazo" é fórmula (tipo string) no Notion — calcula
+    // Em dia/Atrasada/Concluída no Prazo/Concluída com Atraso a partir de
+    // Data Prevista de Conclusão, hoje e Data de Conclusão.
+    situacaoPrazo: formulaValue(p["Situação do Prazo"]) || richText(p["Situação do Prazo"]) || "",
   };
 }
 
