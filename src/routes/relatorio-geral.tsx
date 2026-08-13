@@ -90,11 +90,11 @@ export const Route = createFileRoute("/relatorio-geral")({
   },
   head: () => ({
     meta: [
-      { title: "Relatório Consolidado — Equipe Síndicas" },
+      { title: "Dashboard Gerencial — Equipe Síndicas" },
       {
         name: "description",
         content:
-          "Relatório consolidado de demandas de múltiplos condomínios, com KPIs, gráficos e detalhamento em tempo real via Notion.",
+          "Dashboard gerencial de acompanhamento de tarefas de múltiplos condomínios, com KPIs, gráficos e detalhamento em tempo real via Notion.",
       },
     ],
   }),
@@ -259,12 +259,12 @@ function RelatorioGeralPage() {
     ? (historicoQuery.data?.capturadoEm ?? null)
     : dataUltimaEdicaoLive;
 
-  const descricao = `Este follow-up apresenta a leitura consolidada das tarefas de ${isTodosCondominios ? "todos os condomínios" : condominioLabel}, com foco em tarefa, data de criação, status e última atualização registrada. Foram consideradas ${kpis.total} tarefa${kpis.total === 1 ? "" : "s"} no total; as concluídas aparecem nos gráficos e totais, e o detalhamento operacional prioriza as tarefas ainda em movimento.`;
+  const descricao = `Este dashboard gerencial apresenta o acompanhamento consolidado das tarefas de ${isTodosCondominios ? "todos os condomínios" : condominioLabel}, com foco em tarefa, data de criação, status e última atualização registrada. Foram consideradas ${kpis.total} tarefa${kpis.total === 1 ? "" : "s"} no total; as concluídas aparecem nos gráficos e totais, e o detalhamento operacional prioriza as tarefas ainda em movimento.`;
 
   const mostraCondominioNasTabelas = isTodosCondominios || selecionadosIds.length > 1;
 
   return (
-    <main className="bg-background min-h-screen">
+    <main className="bg-muted/40 min-h-screen">
       <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 md:px-8 md:py-10">
         {allResult.errors.length > 0 && (
           <div className="border-destructive/40 bg-destructive/10 text-destructive flex items-start gap-3 rounded-xl border p-4">
@@ -298,6 +298,8 @@ function RelatorioGeralPage() {
           referencia={referencia}
           descricao={descricao}
           congelado={usaFotografia}
+          titulo="Dashboard Gerencial de Acompanhamento"
+          variant="gerencial"
         />
 
         <ConsolidadoFilters
@@ -316,7 +318,7 @@ function RelatorioGeralPage() {
           </div>
         ) : (
           <>
-            <KpiCards {...kpis} />
+            <KpiCards {...kpis} variant="gerencial" />
 
             <Charts rows={filtered} />
 
@@ -354,7 +356,7 @@ function RelatorioGeralPage() {
 
         <footer className="border-brand-border flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-xs">
           <span className="text-muted-foreground">
-            Equipe Síndicas Profissionais | Follow-up Semanal
+            Equipe Síndicas Profissionais | Dashboard Gerencial
           </span>
           <span className="text-muted-foreground">
             {usaFotografia

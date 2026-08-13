@@ -1,3 +1,4 @@
+import { LayoutDashboard } from "lucide-react";
 import { formatDatePt, addDays } from "@/lib/report-utils";
 
 type Props = {
@@ -7,6 +8,8 @@ type Props = {
   referencia: string | null;
   descricao: string;
   congelado?: boolean;
+  titulo?: string;
+  variant?: "default" | "gerencial";
 };
 
 export function ReportHeader({
@@ -16,6 +19,8 @@ export function ReportHeader({
   referencia,
   descricao,
   congelado,
+  titulo = "Follow-up Semanal - Gestão em Movimento",
+  variant = "default",
 }: Props) {
   return (
     <header className="bg-card rounded-2xl border p-6 shadow-sm md:p-8">
@@ -31,9 +36,14 @@ export function ReportHeader({
         </p>
       </div>
 
-      <p className="text-brand-maroon mt-1 text-base font-medium">
-        Follow-up Semanal - Gestão em Movimento
-      </p>
+      {variant === "gerencial" ? (
+        <span className="border-brand-border bg-muted text-muted-foreground mt-2 inline-flex w-fit items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold tracking-wide uppercase">
+          <LayoutDashboard className="size-3.5" />
+          {titulo}
+        </span>
+      ) : (
+        <p className="text-brand-maroon mt-1 text-base font-medium">{titulo}</p>
+      )}
 
       <p className="text-muted-foreground mt-2 text-xs">
         {semanaInicio ? (
