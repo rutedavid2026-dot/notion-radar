@@ -20,7 +20,7 @@ type Props = {
 export function DemandaSectionTable({ title, description, rows, showCondominio }: Props) {
   return (
     <div className="bg-card overflow-hidden rounded-xl border shadow-sm">
-      <div className="bg-brand-green/10 border-b p-5">
+      <div className="border-b p-5">
         <h3 className="text-brand-green text-lg font-bold tracking-tight">{title}</h3>
         <p className="text-muted-foreground mt-1 text-xs">{description}</p>
       </div>
