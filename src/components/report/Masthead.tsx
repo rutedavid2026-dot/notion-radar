@@ -7,7 +7,7 @@ export function Masthead({ condominio: _condominio }: { condominio: string }) {
     <header className="border-brand-maroon overflow-hidden rounded-2xl border-t-4 shadow-sm">
       <div className="bg-brand-cream flex">
         <div className="bg-brand-green w-3 shrink-0" />
-        <div className="flex flex-1 flex-col items-center gap-2 px-5 py-5 text-center sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-6 sm:text-right md:px-8 md:py-7">
+        <div className="flex flex-1 flex-col items-center gap-2 px-5 py-5 text-center sm:flex-row sm:items-end sm:justify-between sm:gap-4 sm:px-6 sm:py-6 sm:text-right md:px-8 md:py-7">
           <img
             src="/brand/logo-equipe-sindicas-verde-escuro.png"
             alt="Equipe Síndicas"
