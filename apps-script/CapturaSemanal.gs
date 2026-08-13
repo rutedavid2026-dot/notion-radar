@@ -225,25 +225,38 @@ function mapPage(page, condominioOverride) {
     demanda:
       richText(p["Demanda"]) || richText(p["Tarefas"]) || richText(p["TAREFAS"]) || "(sem titulo)",
     responsavel: personValue(p["Pessoa"]) || personValue(p["Responsável"]) || "Nao atribuido",
-    status: statusValue(p["Status"]) || "Nao iniciado",
+    status: statusValue(p["Status"]) || statusValue(p["Status "]) || "Nao iniciado",
     prioridade: prioridadeValue(p["Prioridade"]) || "Baixa",
     condominio: condominioOverride || selectName(p["Condomínio"]) || "-",
     area:
       richText(p["Área"]) ||
+      selectName(p["Área"]) ||
       multiSelectJoined(p["Setor/Demanda"]) ||
       multiSelectJoined(p["Setor"]) ||
+      selectName(p["Setor"]) ||
       "Sem categoria",
-    criadaEm: createdValue(p["Criada em"]) || createdValue(p["Criado em"]) || "",
-    ultimaAtualizacao: richText(p["Última Atualização"]),
+    criadaEm:
+      createdValue(p["Criada em"]) ||
+      createdValue(p["Criado em"]) ||
+      dateValue(p["Início"]) ||
+      dateValue(p["Data de Início"]) ||
+      "",
+    ultimaAtualizacao: richText(p["Última Atualização"]) || richText(p["Última Ação"]),
     historico: richText(p["Histórico"]) || richText(p["Histórico/Evidências"]),
     dataUltimaEdicao: page.last_edited_time,
     url: page.url,
     ordem: p["Ordem"] && typeof p["Ordem"].number === "number" ? p["Ordem"].number : "",
-    previsao: (p["Previsão"] && p["Previsão"].date && p["Previsão"].date.start) || "",
+    previsao: dateValue(p["Previsão"]) || dateValue(p["Previsão (em dias)"]) || "",
     dataPrevista:
-      (p["Data Prevista"] && p["Data Prevista"].date && p["Data Prevista"].date.start) || "",
+      dateValue(p["Data Prevista"]) ||
+      formulaValue(p["Data Prevista"]) ||
+      formulaValue(p["Data Prevista de Conclusão"]) ||
+      "",
     concluidoEm:
-      (p["Concluído em"] && p["Concluído em"].date && p["Concluído em"].date.start) || "",
+      dateValue(p["Concluído em"]) ||
+      dateValue(p["Data de conclusão"]) ||
+      dateValue(p["Data de Conclusão"]) ||
+      "",
   };
 }
 
@@ -302,4 +315,21 @@ function createdValue(prop) {
   if (!prop) return null;
   if (typeof prop.created_time === "string") return prop.created_time;
   return (prop.date && prop.date.start) || null;
+}
+
+// Fallback pra bases (ex.: Jazz Club) que não têm "Criada em"/"Criado em" —
+// usa a propriedade "Início" como data de criação.
+function dateValue(prop) {
+  return (prop && prop.date && prop.date.start) || null;
+}
+
+// Campos "Data Prevista"/"Data Prevista de Conclusão" viraram fórmula em
+// algumas bases (ex.: Miragio Cacupé) — o resultado pode ser data
+// (formula.date) ou texto já formatado (formula.string, ex.: "10/05/2026").
+function formulaValue(prop) {
+  const f = prop && prop.formula;
+  if (!f) return null;
+  if (f.type === "date") return (f.date && f.date.start) || null;
+  if (f.type === "string") return f.string || null;
+  return null;
 }

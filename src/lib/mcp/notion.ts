@@ -71,6 +71,11 @@ function createdValue(prop: any): string | null {
   return prop.date?.start ?? null;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dateValue(prop: any): string | null {
+  return prop?.date?.start ?? null;
+}
+
 function extractNotionDatabaseId(url: string): string | null {
   const match = url.match(
     /[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}/,
@@ -173,16 +178,22 @@ async function fetchDemandasFromDb(
             richText(p["TAREFAS"]) ||
             "(sem título)",
           responsavel: personValue(p["Pessoa"]) || personValue(p["Responsável"]) || "Não atribuído",
-          status: statusValue(p["Status"]) || "Não iniciado",
+          status: statusValue(p["Status"]) || statusValue(p["Status "]) || "Não iniciado",
           prioridade: prioridadeValue(p["Prioridade"]) || "Baixa",
           condominio: condominioOverride || selectName(p["Condomínio"]) || "—",
           area:
             richText(p["Área"]) ||
+            selectName(p["Área"]) ||
             multiSelectJoined(p["Setor/Demanda"]) ||
             multiSelectJoined(p["Setor"]) ||
+            selectName(p["Setor"]) ||
             "Sem categoria",
-          criadaEm: createdValue(p["Criada em"]) ?? createdValue(p["Criado em"]),
-          ultimaAtualizacao: richText(p["Última Atualização"]),
+          criadaEm:
+            createdValue(p["Criada em"]) ??
+            createdValue(p["Criado em"]) ??
+            dateValue(p["Início"]) ??
+            dateValue(p["Data de Início"]),
+          ultimaAtualizacao: richText(p["Última Atualização"]) || richText(p["Última Ação"]),
           historico: richText(p["Histórico"]) || richText(p["Histórico/Evidências"]),
           dataUltimaEdicao: page.last_edited_time,
           url: page.url,

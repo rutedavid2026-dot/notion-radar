@@ -259,3 +259,93 @@ function formatIsoDateValue(value) {
   if (value instanceof Date) return Utilities.formatDate(value, "UTC", "yyyy-MM-dd");
   return String(value || "").slice(0, 10);
 }
+
+// Execução única: remove da aba "Follow-up da semana" qualquer linha cujo
+// condomínio não esteja mais cadastrado na Configuração (ex.: depois de
+// remover Vivendas Home Club e Condominio Teste, ficando só Miragio Cacupé e
+// Jazz Club). Não mexe nas abas de histórico de cada condomínio — só no
+// índice de links usado pela página /gerenciar. Não precisa editar essa
+// função a cada limpeza: ela sempre olha o que está na Configuração AGORA.
+function limparFollowUpsDeCondominiosRemovidos() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+  const lastRowConfig = configSheet.getLastRow();
+  const ativos = {};
+  if (lastRowConfig >= 2) {
+    configSheet
+      .getRange(2, 1, lastRowConfig - 1, 1)
+      .getValues()
+      .forEach(function (row) {
+        const nome = String(row[0] || "").trim();
+        if (nome) ativos[nome] = true;
+      });
+  }
+
+  const followupSheet = ss.getSheetByName(FOLLOWUP_SHEET_NAME);
+  if (!followupSheet) {
+    Logger.log("❌ Aba '" + FOLLOWUP_SHEET_NAME + "' não encontrada.");
+    return;
+  }
+
+  const lastRow = followupSheet.getLastRow();
+  if (lastRow < 2) return;
+
+  const values = followupSheet.getRange(2, 1, lastRow - 1, 1).getValues(); // A = condominio
+  let removidas = 0;
+  for (let i = values.length - 1; i >= 0; i--) {
+    const nome = String(values[i][0] || "").trim();
+    if (!ativos[nome]) {
+      followupSheet.deleteRow(i + 2);
+      removidas++;
+    }
+  }
+  Logger.log(
+    "✅ " + removidas + " linha(s) removida(s) do Follow-up (condomínios não mais cadastrados).",
+  );
+}
+
+// Execução única: remove do Follow-up qualquer linha cuja semana não exista
+// mais no histórico ATUAL daquele condomínio — cobre o caso de trocar a aba
+// de histórico de um condomínio já cadastrado (ex.: apontar o Miragio Cacupé
+// pra uma database/aba nova, que só tem a semana 33 capturada) sem que as
+// semanas antigas (29 a 32, da aba antiga) sejam limpas do Follow-up
+// automaticamente. Diferente de limparFollowUpsDeCondominiosRemovidos: aqui
+// o condomínio continua cadastrado, só a semana específica é que não existe
+// mais na aba que ele aponta hoje.
+function limparFollowUpsDeSemanasInexistentesNoHistorico() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const followupSheet = ss.getSheetByName(FOLLOWUP_SHEET_NAME);
+  if (!followupSheet) {
+    Logger.log("❌ Aba '" + FOLLOWUP_SHEET_NAME + "' não encontrada.");
+    return;
+  }
+
+  const semanasValidasPorCondominio = {};
+  processarHistoricoDeCadaCondominio(function (condominio, id, followup, semanas) {
+    const validas = {};
+    semanas.forEach(function (s) {
+      validas[s.n] = true;
+    });
+    semanasValidasPorCondominio[condominio] = validas;
+  });
+
+  const lastRow = followupSheet.getLastRow();
+  if (lastRow < 2) return;
+
+  const values = followupSheet.getRange(2, 1, lastRow - 1, 2).getValues(); // A=condominio, B=semana
+  let removidas = 0;
+  for (let i = values.length - 1; i >= 0; i--) {
+    const condominio = String(values[i][0] || "").trim();
+    const semanaN = Number(values[i][1]);
+    const validas = semanasValidasPorCondominio[condominio];
+    if (!validas || !validas[semanaN]) {
+      followupSheet.deleteRow(i + 2);
+      removidas++;
+    }
+  }
+  Logger.log(
+    "✅ " +
+      removidas +
+      " linha(s) removida(s) do Follow-up (semana não existe mais no histórico atual daquele condomínio).",
+  );
+}

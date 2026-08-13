@@ -117,6 +117,19 @@ function createdValue(prop: any): string | null {
   return prop.date?.start ?? null;
 }
 
+// Campos "Data Prevista"/"Data Prevista de Conclusão" viraram fórmula em
+// algumas bases — o resultado pode ser um valor de data (`formula.date`) ou
+// texto já formatado (`formula.string`, ex.: "10/05/2026", como configuramos
+// pro Miragio Cacupé), dependendo de como a fórmula foi escrita.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function formulaValue(prop: any): string | null {
+  const f = prop?.formula;
+  if (!f) return null;
+  if (f.type === "date") return f.date?.start ?? null;
+  if (f.type === "string") return f.string ?? null;
+  return null;
+}
+
 // Integrações do Notion são presas a um único workspace — não existe
 // "compartilhar entre workspaces". Como os condomínios podem viver em
 // workspaces diferentes (ex.: Jazz Club fica num workspace separado do
@@ -192,23 +205,35 @@ async function fetchDemandasFromDb(
             richText(p["TAREFAS"]) ||
             "(sem título)",
           responsavel: personValue(p["Pessoa"]) || personValue(p["Responsável"]) || "Não atribuído",
-          status: statusValue(p["Status"]) || "Não iniciado",
+          status: statusValue(p["Status"]) || statusValue(p["Status "]) || "Não iniciado",
           prioridade: prioridadeValue(p["Prioridade"]) || "Baixa",
           condominio: condominioOverride || selectName(p["Condomínio"]) || "—",
           area:
             richText(p["Área"]) ||
+            selectName(p["Área"]) ||
             multiSelectJoined(p["Setor/Demanda"]) ||
             multiSelectJoined(p["Setor"]) ||
+            selectName(p["Setor"]) ||
             "Sem categoria",
-          criadaEm: createdValue(p["Criada em"]) ?? createdValue(p["Criado em"]),
-          ultimaAtualizacao: richText(p["Última Atualização"]),
+          criadaEm:
+            createdValue(p["Criada em"]) ??
+            createdValue(p["Criado em"]) ??
+            dateValue(p["Início"]) ??
+            dateValue(p["Data de Início"]),
+          ultimaAtualizacao: richText(p["Última Atualização"]) || richText(p["Última Ação"]),
           historico: richText(p["Histórico"]) || richText(p["Histórico/Evidências"]),
           dataUltimaEdicao: page.last_edited_time,
           url: page.url,
           ordem: numberValue(p["Ordem"]),
-          previsao: dateValue(p["Previsão"]),
-          dataPrevista: dateValue(p["Data Prevista"]),
-          concluidoEm: dateValue(p["Concluído em"]),
+          previsao: dateValue(p["Previsão"]) ?? dateValue(p["Previsão (em dias)"]),
+          dataPrevista:
+            dateValue(p["Data Prevista"]) ??
+            formulaValue(p["Data Prevista"]) ??
+            formulaValue(p["Data Prevista de Conclusão"]),
+          concluidoEm:
+            dateValue(p["Concluído em"]) ??
+            dateValue(p["Data de conclusão"]) ??
+            dateValue(p["Data de Conclusão"]),
         });
       }
 
