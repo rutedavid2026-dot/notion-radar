@@ -240,12 +240,15 @@ async function fetchHistoricoRows(gid: string): Promise<RawRow[]> {
       semanaN: Number(r[c("SemanaN")]),
       capturadoEm: r[c("CapturadoEm")] ?? "",
       id: r[c("PageId")] ?? "",
-      demanda: r[c("Demanda")] ?? "",
+      // Nomes novos (Tarefa/Setor) com fallback pros nomes antigos
+      // (Demanda/Area), pra continuar lendo abas que ainda não tiveram o
+      // cabeçalho reescrito (renomearCabecalhosExistentes em Config.gs).
+      demanda: r[c("Tarefa")] || r[c("Demanda")] || "",
       responsavel: r[c("Responsavel")] ?? "",
       status: r[c("Status")] ?? "",
       prioridade: r[c("Prioridade")] ?? "",
       condominio: r[c("Condominio")] ?? "",
-      area: r[c("Area")] ?? "",
+      area: r[c("Setor")] || r[c("Area")] || "",
       criadaEm: r[c("CriadaEm")] || null,
       ultimaAtualizacao: r[c("UltimaAtualizacao")] ?? "",
       historico: r[c("Historico")] ?? "",
