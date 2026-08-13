@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { getFollowUps, type FollowUpEntry } from "@/lib/sheets.functions";
 import { formatDatePt } from "@/lib/report-utils";
 import {
@@ -59,6 +59,13 @@ function GerenciarPage() {
   return (
     <main className="bg-background min-h-screen">
       <div className="mx-auto max-w-4xl space-y-5 px-4 py-6 md:px-8 md:py-10">
+        <Link
+          to="/"
+          className="text-muted-foreground hover:text-brand-green inline-flex items-center gap-1 text-sm transition-colors"
+        >
+          ← Voltar ao menu
+        </Link>
+
         <Masthead condominio="" />
 
         {result.data.length === 0 ? (
