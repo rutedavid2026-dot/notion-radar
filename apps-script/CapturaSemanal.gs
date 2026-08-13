@@ -236,10 +236,10 @@ function mapPage(page, condominioOverride) {
       selectName(p["Setor"]) ||
       "Sem categoria",
     criadaEm:
+      dateValue(p["Data de Início"]) ||
+      dateValue(p["Início"]) ||
       createdValue(p["Criada em"]) ||
       createdValue(p["Criado em"]) ||
-      dateValue(p["Início"]) ||
-      dateValue(p["Data de Início"]) ||
       "",
     ultimaAtualizacao: richText(p["Última Atualização"]) || richText(p["Última Ação"]),
     historico: richText(p["Histórico"]) || richText(p["Histórico/Evidências"]),

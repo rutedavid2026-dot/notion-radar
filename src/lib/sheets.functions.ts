@@ -252,9 +252,13 @@ async function fetchHistoricoRows(gid: string): Promise<RawRow[]> {
       dataUltimaEdicao: r[c("DataUltimaEdicao")] ?? "",
       url: r[c("URL")] ?? "",
       ordem: r[c("Ordem")] ? Number(r[c("Ordem")]) : null,
-      previsao: r[c("Previsao")] || null,
-      dataPrevista: r[c("DataPrevista")] || null,
-      concluidoEm: r[c("ConcluidoEm")] || null,
+      // Nomes novos (PrevisaoEmDias/DataPrevisaoConclusao/DataConclusao) com
+      // fallback pros nomes antigos, pra continuar lendo abas que ainda não
+      // tiveram o cabeçalho reescrito (renomearCabecalhosExistentes em
+      // Config.gs).
+      previsao: r[c("PrevisaoEmDias")] || r[c("Previsao")] || null,
+      dataPrevista: r[c("DataPrevisaoConclusao")] || r[c("DataPrevista")] || null,
+      concluidoEm: r[c("DataConclusao")] || r[c("ConcluidoEm")] || null,
     }));
 }
 

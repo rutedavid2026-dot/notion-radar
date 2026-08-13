@@ -189,10 +189,10 @@ async function fetchDemandasFromDb(
             selectName(p["Setor"]) ||
             "Sem categoria",
           criadaEm:
-            createdValue(p["Criada em"]) ??
-            createdValue(p["Criado em"]) ??
+            dateValue(p["Data de Início"]) ??
             dateValue(p["Início"]) ??
-            dateValue(p["Data de Início"]),
+            createdValue(p["Criada em"]) ??
+            createdValue(p["Criado em"]),
           ultimaAtualizacao: richText(p["Última Atualização"]) || richText(p["Última Ação"]),
           historico: richText(p["Histórico"]) || richText(p["Histórico/Evidências"]),
           dataUltimaEdicao: page.last_edited_time,

@@ -33,9 +33,9 @@ const HEADERS_HISTORICO = [
   "URL",
   "PageId",
   "Ordem",
-  "Previsao",
-  "DataPrevista",
-  "ConcluidoEm",
+  "PrevisaoEmDias",
+  "DataPrevisaoConclusao",
+  "DataConclusao",
 ];
 
 function extrairDatabaseId(url) {
