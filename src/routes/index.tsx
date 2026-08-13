@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Masthead } from "@/components/report/Masthead";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -17,19 +18,7 @@ function IndexPage() {
   return (
     <main className="bg-background min-h-screen">
       <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 md:px-8 md:py-10">
-        <header className="border-brand-maroon overflow-hidden rounded-2xl border-t-4 shadow-sm">
-          <div className="bg-brand-cream flex">
-            <div className="bg-brand-green w-3 shrink-0" />
-            <div className="flex-1 px-6 py-5 md:px-8">
-              <p className="text-brand-green text-2xl font-bold tracking-tight md:text-3xl">
-                EQUIPE SÍNDICAS
-              </p>
-              <p className="text-brand-green/70 mt-1 text-xs font-semibold tracking-[0.2em] uppercase">
-                Gestão Condominial
-              </p>
-            </div>
-          </div>
-        </header>
+        <Masthead condominio="" />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Link
