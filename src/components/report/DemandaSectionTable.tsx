@@ -50,7 +50,7 @@ function sortValue(r: Demanda, key: SortKey): string {
     case "concluidoEm":
       return r.concluidoEm ?? "";
     case "ultimaAtualizacao":
-      return r.historico || r.ultimaAtualizacao || "";
+      return r.ultimaAtualizacao || r.historico || "";
   }
 }
 
@@ -120,8 +120,8 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
                     )}
                     <div className="text-muted-foreground/80 mt-1 text-xs">
                       {formatDatePt(r.criadaEm)}
-                      {(r.historico || r.ultimaAtualizacao) && (
-                        <span> · {r.historico || r.ultimaAtualizacao}</span>
+                      {(r.ultimaAtualizacao || r.historico) && (
+                        <span> · {r.ultimaAtualizacao || r.historico}</span>
                       )}
                     </div>
                     {(r.dataPrevista || r.concluidoEm) && (
@@ -234,7 +234,7 @@ export function DemandaSectionTable({ title, description, rows, showCondominio }
                       {formatDatePt(r.concluidoEm)}
                     </TableCell>
                     <TableCell className="text-muted-foreground p-1.5 align-top text-xs break-words">
-                      {r.historico || r.ultimaAtualizacao || "—"}
+                      {r.ultimaAtualizacao || r.historico || "—"}
                     </TableCell>
                   </TableRow>
                 ))}
