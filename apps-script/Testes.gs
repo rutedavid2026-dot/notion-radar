@@ -149,6 +149,46 @@ function limparSemana32Espuria() {
   Logger.log("✅ Limpeza concluída.");
 }
 
+// Execução única (rodar manualmente pelo editor Apps Script após colar esta
+// versão do código): corrige o valor "Nao atribuido" (sem acento, bug do
+// fallback antigo em mapPage() de CapturaSemanal.gs) para "Não atribuído" em
+// todas as abas de histórico já capturadas. Capturas feitas a partir desta
+// versão do script já gravam certo — esta função só arruma o que já foi
+// gravado antes da correção.
+function corrigirResponsavelSemAcento() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+  if (!configSheet) return;
+
+  const lastRow = configSheet.getLastRow();
+  if (lastRow < 2) return;
+
+  const colResponsavel = HEADERS_HISTORICO.indexOf("Responsavel") + 1;
+  const gids = configSheet.getRange(2, COL_ABA, lastRow - 1, 1).getValues();
+  let totalCorrigidas = 0;
+
+  gids.forEach(function (row) {
+    const gid = row[0];
+    if (!gid) return;
+    const sheet = getSheetByGid(ss, gid);
+    if (!sheet || sheet.getLastRow() < 2) return;
+
+    const range = sheet.getRange(2, colResponsavel, sheet.getLastRow() - 1, 1);
+    const values = range.getValues();
+    let mudou = false;
+    for (let i = 0; i < values.length; i++) {
+      if (values[i][0] === "Nao atribuido") {
+        values[i][0] = "Não atribuído";
+        mudou = true;
+        totalCorrigidas++;
+      }
+    }
+    if (mudou) range.setValues(values);
+  });
+
+  Logger.log("✅ " + totalCorrigidas + " célula(s) 'Nao atribuido' corrigida(s) pra 'Não atribuído'.");
+}
+
 function removerLinhasPorSemana(sheet, coluna, semanaN) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return 0;

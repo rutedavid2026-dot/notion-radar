@@ -226,7 +226,7 @@ function mapPage(page, condominioOverride) {
     id: page.id,
     demanda:
       richText(p["Demanda"]) || richText(p["Tarefas"]) || richText(p["TAREFAS"]) || "(sem titulo)",
-    responsavel: personValue(p["Pessoa"]) || personValue(p["Responsável"]) || "Nao atribuido",
+    responsavel: personValue(p["Pessoa"]) || personValue(p["Responsável"]) || "Não atribuído",
     status: statusValue(p["Status"]) || statusValue(p["Status "]) || "Nao iniciado",
     prioridade: prioridadeValue(p["Prioridade"]) || "Baixa",
     condominio: condominioOverride || selectName(p["Condomínio"]) || "-",

@@ -15,6 +15,7 @@ import {
   statusBucket,
   temPrioridade,
   temResponsavel,
+  temSetor,
   uniqueSorted,
   weekRange,
   SEMANA_TODAS,
@@ -217,7 +218,10 @@ function ReportPage() {
     [abertas],
   );
   const construtora = useMemo(
-    () => filtered.filter((r) => temResponsavel(r.responsavel, "Construtora")),
+    () =>
+      filtered.filter(
+        (r) => temResponsavel(r.responsavel, "Construtora") || temSetor(r.area, "Construtora"),
+      ),
     [filtered],
   );
 

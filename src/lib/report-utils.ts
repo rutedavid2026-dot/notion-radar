@@ -88,6 +88,13 @@ export function temResponsavel(responsavel: string, alvo: string): boolean {
   return splitLista(responsavel).some((r) => normalizeForMatch(r) === alvoNorm);
 }
 
+// Mesmo tratamento pro Setor — bases sem coluna Responsável própria pra
+// Construtora (ex.: Vivendas) categorizam essas tarefas pelo Setor.
+export function temSetor(setor: string, alvo: string): boolean {
+  const alvoNorm = normalizeForMatch(alvo);
+  return splitLista(setor).some((s) => normalizeForMatch(s) === alvoNorm);
+}
+
 // Returns ISO date (YYYY-MM-DD) of the Monday of the given date's week.
 export function mondayOf(dateStr: string): string {
   const d = new Date(dateStr);
