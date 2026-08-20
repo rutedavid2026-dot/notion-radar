@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VivendasPlanoDeAcaoRouteImport } from './routes/vivendas-plano-de-acao'
 import { Route as RelatorioGeralRouteImport } from './routes/relatorio-geral'
+import { Route as OutrosFollowUpsRouteImport } from './routes/outros-follow-ups'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as GerenciarRouteImport } from './routes/gerenciar'
 import { Route as CondominioRouteImport } from './routes/$condominio'
@@ -18,9 +20,19 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 
+const VivendasPlanoDeAcaoRoute = VivendasPlanoDeAcaoRouteImport.update({
+  id: '/vivendas-plano-de-acao',
+  path: '/vivendas-plano-de-acao',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RelatorioGeralRoute = RelatorioGeralRouteImport.update({
   id: '/relatorio-geral',
   path: '/relatorio-geral',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OutrosFollowUpsRoute = OutrosFollowUpsRouteImport.update({
+  id: '/outros-follow-ups',
+  path: '/outros-follow-ups',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -67,7 +79,9 @@ export interface FileRoutesByFullPath {
   '/$condominio': typeof CondominioRoute
   '/gerenciar': typeof GerenciarRoute
   '/mcp': typeof McpRoute
+  '/outros-follow-ups': typeof OutrosFollowUpsRoute
   '/relatorio-geral': typeof RelatorioGeralRoute
+  '/vivendas-plano-de-acao': typeof VivendasPlanoDeAcaoRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -77,7 +91,9 @@ export interface FileRoutesByTo {
   '/$condominio': typeof CondominioRoute
   '/gerenciar': typeof GerenciarRoute
   '/mcp': typeof McpRoute
+  '/outros-follow-ups': typeof OutrosFollowUpsRoute
   '/relatorio-geral': typeof RelatorioGeralRoute
+  '/vivendas-plano-de-acao': typeof VivendasPlanoDeAcaoRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -88,7 +104,9 @@ export interface FileRoutesById {
   '/$condominio': typeof CondominioRoute
   '/gerenciar': typeof GerenciarRoute
   '/mcp': typeof McpRoute
+  '/outros-follow-ups': typeof OutrosFollowUpsRoute
   '/relatorio-geral': typeof RelatorioGeralRoute
+  '/vivendas-plano-de-acao': typeof VivendasPlanoDeAcaoRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -100,7 +118,9 @@ export interface FileRouteTypes {
     | '/$condominio'
     | '/gerenciar'
     | '/mcp'
+    | '/outros-follow-ups'
     | '/relatorio-geral'
+    | '/vivendas-plano-de-acao'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/.mcp/invoke-tool/$tool'
@@ -110,7 +130,9 @@ export interface FileRouteTypes {
     | '/$condominio'
     | '/gerenciar'
     | '/mcp'
+    | '/outros-follow-ups'
     | '/relatorio-geral'
+    | '/vivendas-plano-de-acao'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/.mcp/invoke-tool/$tool'
@@ -120,7 +142,9 @@ export interface FileRouteTypes {
     | '/$condominio'
     | '/gerenciar'
     | '/mcp'
+    | '/outros-follow-ups'
     | '/relatorio-geral'
+    | '/vivendas-plano-de-acao'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/.mcp/invoke-tool/$tool'
@@ -131,7 +155,9 @@ export interface RootRouteChildren {
   CondominioRoute: typeof CondominioRoute
   GerenciarRoute: typeof GerenciarRoute
   McpRoute: typeof McpRoute
+  OutrosFollowUpsRoute: typeof OutrosFollowUpsRoute
   RelatorioGeralRoute: typeof RelatorioGeralRoute
+  VivendasPlanoDeAcaoRoute: typeof VivendasPlanoDeAcaoRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -139,11 +165,25 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/vivendas-plano-de-acao': {
+      id: '/vivendas-plano-de-acao'
+      path: '/vivendas-plano-de-acao'
+      fullPath: '/vivendas-plano-de-acao'
+      preLoaderRoute: typeof VivendasPlanoDeAcaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/relatorio-geral': {
       id: '/relatorio-geral'
       path: '/relatorio-geral'
       fullPath: '/relatorio-geral'
       preLoaderRoute: typeof RelatorioGeralRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/outros-follow-ups': {
+      id: '/outros-follow-ups'
+      path: '/outros-follow-ups'
+      fullPath: '/outros-follow-ups'
+      preLoaderRoute: typeof OutrosFollowUpsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -203,7 +243,9 @@ const rootRouteChildren: RootRouteChildren = {
   CondominioRoute: CondominioRoute,
   GerenciarRoute: GerenciarRoute,
   McpRoute: McpRoute,
+  OutrosFollowUpsRoute: OutrosFollowUpsRoute,
   RelatorioGeralRoute: RelatorioGeralRoute,
+  VivendasPlanoDeAcaoRoute: VivendasPlanoDeAcaoRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,

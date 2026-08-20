@@ -217,6 +217,64 @@ export const getFollowUps = createServerFn({ method: "GET" }).handler(
   },
 );
 
+export type OutroFollowUpEntry = {
+  nome: string;
+  semana: number;
+  linkFollowUp: string;
+  dataInicio: string;
+  dataTermino: string;
+};
+
+export type GetOutrosFollowUpsResult = {
+  data: OutroFollowUpEntry[];
+  error: string | null;
+};
+
+// Lê a aba "Outros Follow-ups" da mesma planilha índice — relatórios de
+// acompanhamento que não são o follow-up semanal padrão de demandas de um
+// condomínio (ex.: Plano de Ação da Vivendas, derivado de laudo de
+// vistoria). Populada por capturarOutrosFollowUps (apps-script/OutrosFollowUps.gs).
+export const getOutrosFollowUps = createServerFn({ method: "GET" }).handler(
+  async (): Promise<GetOutrosFollowUpsResult> => {
+    const spreadsheetId = process.env.REGISTRY_SPREADSHEET_ID ?? SPREADSHEET_ID;
+    const gid = process.env.OUTROS_FOLLOWUPS_GID ?? "22211610";
+
+    try {
+      const [header, ...body] = await fetchCsv(spreadsheetId, gid);
+      if (!header) return { data: [], error: null };
+
+      const iNome = col(header, "nome", "Nome");
+      const iSemana = col(header, "semana", "Semana");
+      const iLink = col(header, "link-follow-up", "link_followup", "Link Follow-up", "URL");
+      const iInicio = col(header, "data-inicio", "data_inicio", "Data Início", "data-início");
+      const iTermino = col(header, "data-termino", "data_termino", "Data Término", "data-término");
+
+      const data: OutroFollowUpEntry[] = [];
+      for (const r of body) {
+        const nome = (r[iNome] ?? "").trim();
+        const linkFollowUp = (r[iLink] ?? "").trim();
+        const semana = Number((r[iSemana] ?? "").trim());
+        if (!nome || !linkFollowUp || !Number.isFinite(semana)) continue;
+        data.push({
+          nome,
+          semana,
+          linkFollowUp,
+          dataInicio: (r[iInicio] ?? "").trim(),
+          dataTermino: (r[iTermino] ?? "").trim(),
+        });
+      }
+      data.sort((a, b) => a.nome.localeCompare(b.nome) || b.semana - a.semana);
+      return { data, error: null };
+    } catch (e) {
+      return {
+        data: [],
+        error:
+          e instanceof Error ? e.message : "Erro desconhecido ao ler a planilha de outros follow-ups",
+      };
+    }
+  },
+);
+
 type RawRow = Demanda & {
   semanaInicio: string;
   semanaFim: string;
@@ -368,3 +426,116 @@ export const getSemanasDisponiveis = createServerFn({ method: "GET" })
     }
     return Array.from(map.values()).sort((a, b) => a.n - b.n);
   });
+
+// --- Plano de Ação da Vivendas (derivado de laudo de vistoria) ---
+// Schema completamente diferente das demandas normais (ver
+// apps-script/OutrosFollowUps.gs) — por isso um reader à parte, em vez de
+// reaproveitar fetchHistoricoRows/Demanda.
+
+export type PlanoDeAcaoItem = {
+  acao: string;
+  status: string;
+  prioridade: string;
+  categoria: string;
+  area: string;
+  responsavelSugerido: string;
+  prazoPrimeiraProvidencia: string | null;
+  prazoConclusao: string | null;
+  acaoRecomendada: string;
+  risco: string;
+  origem: string;
+  referenciaRelatorio: string;
+  tipoDeAcao: string;
+  apontamentoOriginal: string;
+  garantiaFastBuilt: string;
+  paginas: string;
+  id: string;
+  url: string;
+  dataUltimaEdicao: string;
+};
+
+export type PlanoDeAcaoResult = {
+  data: PlanoDeAcaoItem[];
+  semanaN: number | null;
+  capturadoEm: string | null;
+};
+
+const PLANO_ACAO_VIVENDAS_GID = "1087397260";
+
+type RawPlanoAcaoRow = PlanoDeAcaoItem & {
+  semanaInicio: string;
+  semanaFim: string;
+  semanaN: number;
+  capturadoEm: string;
+};
+
+async function fetchPlanoDeAcaoRows(): Promise<RawPlanoAcaoRow[]> {
+  const spreadsheetId = process.env.REGISTRY_SPREADSHEET_ID ?? SPREADSHEET_ID;
+  const gid = process.env.PLANO_ACAO_VIVENDAS_GID ?? PLANO_ACAO_VIVENDAS_GID;
+  const [header, ...body] = await fetchCsv(spreadsheetId, gid);
+  if (!header) return [];
+  const c = (name: string) => header.indexOf(name);
+
+  return body
+    .filter((r) => r.length > 1)
+    .map((r) => ({
+      semanaInicio: r[c("SemanaInicio")] ?? "",
+      semanaFim: r[c("SemanaFim")] ?? "",
+      semanaN: Number(r[c("SemanaN")]),
+      capturadoEm: r[c("CapturadoEm")] ?? "",
+      acao: r[c("Acao")] ?? "",
+      status: r[c("Status")] ?? "",
+      prioridade: r[c("Prioridade")] ?? "",
+      categoria: r[c("Categoria")] ?? "",
+      area: r[c("Area")] ?? "",
+      responsavelSugerido: r[c("ResponsavelSugerido")] ?? "",
+      prazoPrimeiraProvidencia: r[c("PrazoPrimeiraProvidencia")] || null,
+      prazoConclusao: r[c("PrazoConclusao")] || null,
+      acaoRecomendada: r[c("AcaoRecomendada")] ?? "",
+      risco: r[c("Risco")] ?? "",
+      origem: r[c("Origem")] ?? "",
+      referenciaRelatorio: r[c("ReferenciaRelatorio")] ?? "",
+      tipoDeAcao: r[c("TipoDeAcao")] ?? "",
+      apontamentoOriginal: r[c("ApontamentoOriginal")] ?? "",
+      garantiaFastBuilt: r[c("GarantiaFastBuilt")] ?? "",
+      paginas: r[c("Paginas")] ?? "",
+      id: r[c("PageId")] ?? "",
+      url: r[c("URL")] ?? "",
+      dataUltimaEdicao: r[c("DataUltimaEdicao")] ?? "",
+    }));
+}
+
+export const getPlanoDeAcaoVivendasSemana = createServerFn({ method: "GET" })
+  .validator((input: unknown) => input as { semanaInicio: string })
+  .handler(async ({ data }): Promise<PlanoDeAcaoResult> => {
+    const all = await fetchPlanoDeAcaoRows();
+    const rows = all.filter((r) => r.semanaInicio === data.semanaInicio);
+
+    if (rows.length === 0) {
+      return { data: [], semanaN: null, capturadoEm: null };
+    }
+
+    const cleaned: PlanoDeAcaoItem[] = rows.map(
+      ({
+        semanaInicio: _semanaInicio,
+        semanaFim: _semanaFim,
+        semanaN: _semanaN,
+        capturadoEm: _capturadoEm,
+        ...d
+      }) => d,
+    );
+
+    return { data: cleaned, semanaN: rows[0].semanaN, capturadoEm: rows[0].capturadoEm };
+  });
+
+export const getPlanoDeAcaoVivendasSemanasDisponiveis = createServerFn({ method: "GET" }).handler(
+  async (): Promise<SemanaDisponivel[]> => {
+    const all = await fetchPlanoDeAcaoRows();
+    const map = new Map<number, SemanaDisponivel>();
+    for (const r of all) {
+      if (!r.semanaN || map.has(r.semanaN)) continue;
+      map.set(r.semanaN, { n: r.semanaN, start: r.semanaInicio, end: r.semanaFim });
+    }
+    return Array.from(map.values()).sort((a, b) => a.n - b.n);
+  },
+);

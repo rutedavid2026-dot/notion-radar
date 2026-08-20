@@ -389,3 +389,108 @@ function limparFollowUpsDeSemanasInexistentesNoHistorico() {
       " linha(s) removida(s) do Follow-up (semana não existe mais no histórico atual daquele condomínio).",
   );
 }
+
+// Diagnóstico pontual: compara o schema (colunas + tipo + fórmula, quando
+// for o caso) de duas databases do Notion — uma que precisa ser ajustada e
+// outra usada como referência/molde. Não altera nada, só loga os dois
+// schemas lado a lado pra eu conseguir montar o diff certo antes de propor
+// os ajustes.
+function teste7_CompararSchemaDatabases() {
+  const props = PropertiesService.getScriptProperties();
+  const tokens = getNotionTokens(props);
+  if (tokens.length === 0) {
+    Logger.log("❌ Configure NOTION_API_KEY em Script Properties.");
+    return;
+  }
+
+  const ALVO_DB_ID = "3c1e69ba114f80439e71f68e816f046a";
+
+  Logger.log("========== DATABASE ALVO (a ajustar) ==========");
+  logSchemaDatabaseComTokens(tokens, ALVO_DB_ID);
+
+  Logger.log("");
+  const referenciaDbId = buscarDatabaseIdCondominio("Jazz Club");
+  if (!referenciaDbId) {
+    Logger.log("❌ Não achei 'Jazz Club' na aba '" + CONFIG_SHEET_NAME + "' — confira o nome exato lá.");
+    return;
+  }
+  Logger.log("========== DATABASE REFERÊNCIA (Jazz Club, ID=" + referenciaDbId + ") ==========");
+  logSchemaDatabaseComTokens(tokens, referenciaDbId);
+}
+
+// Acha o ID da database Notion de um condomínio pelo nome, lendo direto da
+// aba "Configuração" (mesma fonte que capturarTodasFotografias usa) — mais
+// confiável do que confiar num link colado manualmente, que pode apontar
+// pra página em vez da database (já aconteceu antes nessa mesma conversa).
+function buscarDatabaseIdCondominio(nomeCondominio) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+  if (!configSheet) return null;
+  const lastRow = configSheet.getLastRow();
+  if (lastRow < 2) return null;
+  const linhas = configSheet.getRange(2, 1, lastRow - 1, 2).getValues();
+  for (let i = 0; i < linhas.length; i++) {
+    const condominio = String(linhas[i][0] || "").trim();
+    if (condominio.toLowerCase() === nomeCondominio.toLowerCase()) {
+      return extrairDatabaseId(String(linhas[i][1] || "").trim());
+    }
+  }
+  return null;
+}
+
+function logSchemaDatabaseComTokens(tokens, dbId) {
+  let ultimoErro = null;
+  for (let i = 0; i < tokens.length; i++) {
+    try {
+      const db = buscarSchemaDatabase(tokens[i], dbId);
+      Logger.log("Título: " + (db.title && db.title[0] && db.title[0].plain_text));
+      Logger.log("ID: " + db.id);
+      const nomes = Object.keys(db.properties);
+      Logger.log("Total de propriedades: " + nomes.length);
+      nomes.forEach(function (nome) {
+        const prop = db.properties[nome];
+        let linha = "- " + nome + " (" + prop.type + ")";
+        if (prop.type === "formula" && prop.formula && prop.formula.expression) {
+          linha += "\n    fórmula: " + prop.formula.expression;
+        }
+        if (prop.type === "select" && prop.select && prop.select.options) {
+          linha += "\n    opções: " + prop.select.options.map(function (o) { return o.name; }).join(", ");
+        }
+        if (prop.type === "status" && prop.status && prop.status.options) {
+          linha += "\n    opções: " + prop.status.options.map(function (o) { return o.name; }).join(", ");
+        }
+        if (prop.type === "relation" && prop.relation) {
+          linha += "\n    relation database_id: " + prop.relation.database_id;
+        }
+        if (prop.type === "rollup" && prop.rollup) {
+          linha +=
+            "\n    rollup: relation_property=" +
+            prop.rollup.relation_property_name +
+            " / rollup_property=" +
+            prop.rollup.rollup_property_name +
+            " / function=" +
+            prop.rollup.function;
+        }
+        Logger.log(linha);
+      });
+      return;
+    } catch (err) {
+      ultimoErro = err;
+    }
+  }
+  Logger.log("❌ Não consegui ler essa database com nenhum token: " + ultimoErro.message);
+}
+
+function buscarSchemaDatabase(token, dbId) {
+  const headers = { Authorization: "Bearer " + token, "Notion-Version": NOTION_VERSION };
+  const res = UrlFetchApp.fetch("https://api.notion.com/v1/databases/" + dbId, {
+    method: "get",
+    headers: headers,
+    muteHttpExceptions: true,
+  });
+  const json = JSON.parse(res.getContentText());
+  if (json.object === "error") {
+    throw new Error("Notion API: " + (json.message || res.getContentText()));
+  }
+  return json;
+}

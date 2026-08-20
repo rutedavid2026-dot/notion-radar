@@ -54,6 +54,23 @@ function IndexPage() {
               →
             </span>
           </Link>
+
+          <Link
+            to="/outros-follow-ups"
+            className="bg-card hover:border-brand-green group flex items-center justify-between rounded-xl border p-5 shadow-sm transition-colors"
+          >
+            <div>
+              <p className="text-brand-green text-base font-bold tracking-tight">
+                Outros Follow-ups
+              </p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Relatórios de acompanhamento que não são o follow-up semanal padrão.
+              </p>
+            </div>
+            <span aria-hidden className="text-brand-green group-hover:translate-x-0.5 transition-transform">
+              →
+            </span>
+          </Link>
         </div>
       </div>
     </main>

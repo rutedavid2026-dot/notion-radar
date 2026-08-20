@@ -77,8 +77,21 @@ function capturarTodasFotografias() {
       registrarFollowUpSemana(followupSheet, condominio, id, semana);
     } catch (err) {
       erros.push(condominio + ": " + err.message);
+      return;
+    }
+
+    try {
+      sincronizarFollowUpComTokens(tokens, NOTION_FOLLOWUPS_DB_ID, condominio, id, semana);
+    } catch (err) {
+      erros.push(condominio + " (espelho Notion Relatórios Semanais): " + err.message);
     }
   });
+
+  try {
+    capturarOutrosFollowUps(ss, tokens);
+  } catch (err) {
+    erros.push("Outros Follow-ups: " + err.message);
+  }
 
   if (erros.length > 0) {
     Logger.log("Falhas na captura semanal:\n" + erros.join("\n"));
