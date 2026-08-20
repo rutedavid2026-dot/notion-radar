@@ -88,13 +88,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/55786090-6ec2-4bac-9682-0a760bbd138f/id-preview-27c0866f--bafb16ed-0aab-45e9-a1ad-9638356ab934.lovable.app-1784292718311.png",
+        content: "https://equipesindicas.lovable.app/preview.png",
       },
       {
         name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/55786090-6ec2-4bac-9682-0a760bbd138f/id-preview-27c0866f--bafb16ed-0aab-45e9-a1ad-9638356ab934.lovable.app-1784292718311.png",
+        content: "https://equipesindicas.lovable.app/preview.png",
       },
     ],
     links: [
