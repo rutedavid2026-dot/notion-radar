@@ -31,6 +31,7 @@ import { Charts } from "@/components/report/Charts";
 import { ResumoExecutivo } from "@/components/report/ResumoExecutivo";
 import { DemandaSectionTable } from "@/components/report/DemandaSectionTable";
 import { ConsolidadoFilters } from "@/components/report/ConsolidadoFilters";
+import { pageMeta } from "@/lib/page-meta";
 
 const registryQueryOptions = queryOptions({
   queryKey: ["sheets", "registry"],
@@ -89,14 +90,10 @@ export const Route = createFileRoute("/relatorio-geral")({
     ]);
   },
   head: () => ({
-    meta: [
-      { title: "Dashboard Gerencial — Equipe Síndicas" },
-      {
-        name: "description",
-        content:
-          "Dashboard gerencial de acompanhamento de tarefas de múltiplos condomínios, com KPIs, gráficos e detalhamento em tempo real via Notion.",
-      },
-    ],
+    meta: pageMeta(
+      "Dashboard Gerencial — Equipe Síndicas",
+      "Dashboard gerencial de acompanhamento de tarefas de múltiplos condomínios, com KPIs, gráficos e detalhamento em tempo real via Notion.",
+    ),
   }),
   component: RelatorioGeralPage,
 });

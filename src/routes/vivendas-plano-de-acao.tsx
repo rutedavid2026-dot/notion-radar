@@ -18,6 +18,7 @@ import {
 } from "@/lib/report-utils";
 import { Masthead } from "@/components/report/Masthead";
 import { ReportHeader } from "@/components/report/ReportHeader";
+import { pageMeta } from "@/lib/page-meta";
 import {
   Table,
   TableHeader,
@@ -66,13 +67,10 @@ const searchSchema = z.object({
 export const Route = createFileRoute("/vivendas-plano-de-acao")({
   validateSearch: (s) => searchSchema.parse(s),
   head: () => ({
-    meta: [
-      { title: "Plano de Ação — Vivendas" },
-      {
-        name: "description",
-        content: "Plano de ação de manutenção/obra da Vivendas, derivado do laudo de vistoria.",
-      },
-    ],
+    meta: pageMeta(
+      "Plano de Ação — Vivendas",
+      "Plano de ação de manutenção/obra da Vivendas, derivado do laudo de vistoria.",
+    ),
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(semanasQueryOptions),
   component: PlanoDeAcaoPage,

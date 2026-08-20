@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { pageMeta } from "../lib/page-meta";
 
 function NotFoundComponent() {
   return (
@@ -77,26 +78,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Relatório Semanal — Miragio Cacupé" },
-      {
-        name: "description",
-        content:
-          "Relatório semanal de demandas do condomínio Miragio Cacupé, com KPIs, gráficos e detalhamento em tempo real via Notion.",
-      },
-      { property: "og:title", content: "Relatório Semanal — Miragio Cacupé" },
-      {
-        property: "og:description",
-        content:
-          "Relatório semanal de demandas do condomínio Miragio Cacupé, com KPIs, gráficos e detalhamento em tempo real via Notion.",
-      },
+      // Fallback só entra em uso se alguma rota nova esquecer de definir o
+      // próprio head() — toda rota real já sobrescreve isso via pageMeta().
+      ...pageMeta(
+        "Equipe Síndicas — Relatório Semanal",
+        "Dashboard de gestão condominial da Equipe Síndicas, com relatórios semanais por condomínio.",
+      ),
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Relatório Semanal — Miragio Cacupé" },
-      {
-        name: "twitter:description",
-        content:
-          "Relatório semanal de demandas do condomínio Miragio Cacupé, com KPIs, gráficos e detalhamento em tempo real via Notion.",
-      },
       {
         property: "og:image",
         content:

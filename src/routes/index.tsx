@@ -1,15 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Masthead } from "@/components/report/Masthead";
+import { pageMeta } from "@/lib/page-meta";
 
 export const Route = createFileRoute("/")({
   head: () => ({
-    meta: [
-      { title: "Equipe Síndicas — Relatório Semanal" },
-      {
-        name: "description",
-        content: "Dashboard consolidado e gerenciamento de links dos condomínios.",
-      },
-    ],
+    meta: pageMeta(
+      "Equipe Síndicas — Relatório Semanal",
+      "Dashboard consolidado e gerenciamento de links dos condomínios.",
+    ),
   }),
   component: IndexPage,
 });

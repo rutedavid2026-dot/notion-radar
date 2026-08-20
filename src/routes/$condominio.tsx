@@ -28,6 +28,7 @@ import { Charts } from "@/components/report/Charts";
 import { ResumoExecutivo } from "@/components/report/ResumoExecutivo";
 import { DemandaSectionTable } from "@/components/report/DemandaSectionTable";
 import { GlobalFilters } from "@/components/report/GlobalFilters";
+import { pageMeta } from "@/lib/page-meta";
 
 const demandasQueryOptions = (slug: string) =>
   queryOptions({
@@ -83,18 +84,10 @@ export const Route = createFileRoute("/$condominio")({
   head: ({ loaderData }) => {
     const nome = loaderData?.condominio ?? "Condomínio";
     return {
-      meta: [
-        { title: `Relatório Semanal — ${nome}` },
-        {
-          name: "description",
-          content: `Relatório semanal de demandas do condomínio ${nome}, com KPIs, gráficos e detalhamento em tempo real via Notion.`,
-        },
-        { property: "og:title", content: `Relatório Semanal — ${nome}` },
-        {
-          property: "og:description",
-          content: `Relatório semanal de demandas do condomínio ${nome}, com KPIs, gráficos e detalhamento em tempo real via Notion.`,
-        },
-      ],
+      meta: pageMeta(
+        `Relatório Semanal — ${nome}`,
+        `Relatório semanal de demandas do condomínio ${nome}, com KPIs, gráficos e detalhamento em tempo real via Notion.`,
+      ),
     };
   },
   component: ReportPage,

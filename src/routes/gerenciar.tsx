@@ -3,6 +3,7 @@ import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getFollowUps, type FollowUpEntry } from "@/lib/sheets.functions";
 import { formatDatePt } from "@/lib/report-utils";
+import { pageMeta } from "@/lib/page-meta";
 import {
   Table,
   TableHeader,
@@ -22,13 +23,10 @@ const followUpsQueryOptions = queryOptions({
 
 export const Route = createFileRoute("/gerenciar")({
   head: () => ({
-    meta: [
-      { title: "Equipe Síndicas — Gerenciar Follow-ups" },
-      {
-        name: "description",
-        content: "Links dos relatórios semanais de cada condomínio, por semana.",
-      },
-    ],
+    meta: pageMeta(
+      "Equipe Síndicas — Gerenciar Follow-ups",
+      "Links dos relatórios semanais de cada condomínio, por semana.",
+    ),
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(followUpsQueryOptions),
   component: GerenciarPage,

@@ -3,6 +3,7 @@ import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getOutrosFollowUps, type OutroFollowUpEntry } from "@/lib/sheets.functions";
 import { formatDatePt } from "@/lib/report-utils";
+import { pageMeta } from "@/lib/page-meta";
 import {
   Table,
   TableHeader,
@@ -22,13 +23,10 @@ const outrosFollowUpsQueryOptions = queryOptions({
 
 export const Route = createFileRoute("/outros-follow-ups")({
   head: () => ({
-    meta: [
-      { title: "Equipe Síndicas — Outros Follow-ups" },
-      {
-        name: "description",
-        content: "Links de relatórios de acompanhamento que não são o follow-up semanal padrão.",
-      },
-    ],
+    meta: pageMeta(
+      "Equipe Síndicas — Outros Follow-ups",
+      "Links de relatórios de acompanhamento que não são o follow-up semanal padrão.",
+    ),
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(outrosFollowUpsQueryOptions),
   component: OutrosFollowUpsPage,
