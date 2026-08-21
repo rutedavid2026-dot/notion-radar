@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getOutrosFollowUps, type OutroFollowUpEntry } from "@/lib/sheets.functions";
 import { formatDatePt } from "@/lib/report-utils";
 import { pageMeta } from "@/lib/page-meta";
+import { requireAuth } from "@/lib/auth.functions";
 import {
   Table,
   TableHeader,
@@ -22,6 +23,7 @@ const outrosFollowUpsQueryOptions = queryOptions({
 });
 
 export const Route = createFileRoute("/outros-follow-ups")({
+  beforeLoad: requireAuth,
   head: () => ({
     meta: pageMeta(
       "Equipe Síndicas — Outros Follow-ups",

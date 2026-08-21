@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { getAllDemandas } from "@/lib/notion.functions";
+import { requireAuth } from "@/lib/auth.functions";
 import {
   getCondominiosRegistry,
   getHistoricoSemana,
@@ -83,6 +84,7 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute("/relatorio-geral")({
   validateSearch: (s) => searchSchema.parse(s),
+  beforeLoad: requireAuth,
   loader: async ({ context }) => {
     await Promise.all([
       context.queryClient.ensureQueryData(registryQueryOptions),

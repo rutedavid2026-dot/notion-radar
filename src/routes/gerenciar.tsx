@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getFollowUps, type FollowUpEntry } from "@/lib/sheets.functions";
 import { formatDatePt } from "@/lib/report-utils";
 import { pageMeta } from "@/lib/page-meta";
+import { requireAuth } from "@/lib/auth.functions";
 import {
   Table,
   TableHeader,
@@ -22,6 +23,7 @@ const followUpsQueryOptions = queryOptions({
 });
 
 export const Route = createFileRoute("/gerenciar")({
+  beforeLoad: requireAuth,
   head: () => ({
     meta: pageMeta(
       "Equipe Síndicas — Gerenciar Follow-ups",
