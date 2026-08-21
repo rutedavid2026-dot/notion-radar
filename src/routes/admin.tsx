@@ -1,8 +1,16 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { Masthead } from "@/components/report/Masthead";
 import { pageMeta } from "@/lib/page-meta";
+import { getCurrentUser } from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/admin")({
+  beforeLoad: async () => {
+    const user = await getCurrentUser();
+    if (!user) {
+      throw redirect({ to: "/" });
+    }
+    return { user };
+  },
   head: () => ({
     meta: pageMeta(
       "Equipe Síndicas — Relatório Semanal",
@@ -13,9 +21,18 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminPage() {
+  const { user } = Route.useRouteContext();
+
   return (
     <main className="bg-background min-h-screen">
       <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 md:px-8 md:py-10">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Conectado como {user.email}</span>
+          <a href="/auth/logout" className="hover:text-brand-green transition-colors">
+            Sair
+          </a>
+        </div>
+
         <Masthead condominio="" />
 
         <div className="grid gap-4 sm:grid-cols-2">

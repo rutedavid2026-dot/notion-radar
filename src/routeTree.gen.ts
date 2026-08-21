@@ -16,8 +16,12 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as GerenciarRouteImport } from './routes/gerenciar'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CondominioRouteImport } from './routes/$condominio'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as AuthGoogleStartRouteImport } from './routes/auth/google/start'
+import { Route as AuthGoogleCallbackRouteImport } from './routes/auth/google/callback'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 
 const VivendasPlanoDeAcaoRoute = VivendasPlanoDeAcaoRouteImport.update({
@@ -55,6 +59,16 @@ const CondominioRoute = CondominioRouteImport.update({
   path: '/$condominio',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthLogoutRoute = AuthLogoutRouteImport.update({
+  id: '/auth/logout',
+  path: '/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
   Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
     id: '/.well-known/oauth-protected-resource',
@@ -67,6 +81,16 @@ const Char91DotmcpChar93ListToolsRoute =
     path: '/.mcp/list-tools',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthGoogleStartRoute = AuthGoogleStartRouteImport.update({
+  id: '/auth/google/start',
+  path: '/auth/google/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthGoogleCallbackRoute = AuthGoogleCallbackRouteImport.update({
+  id: '/auth/google/callback',
+  path: '/auth/google/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -75,6 +99,7 @@ const Char91DotmcpChar93InvokeToolToolRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
   '/$condominio': typeof CondominioRoute
   '/admin': typeof AdminRoute
   '/gerenciar': typeof GerenciarRoute
@@ -84,9 +109,13 @@ export interface FileRoutesByFullPath {
   '/vivendas-plano-de-acao': typeof VivendasPlanoDeAcaoRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/auth/google/callback': typeof AuthGoogleCallbackRoute
+  '/auth/google/start': typeof AuthGoogleStartRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/$condominio': typeof CondominioRoute
   '/admin': typeof AdminRoute
   '/gerenciar': typeof GerenciarRoute
@@ -96,10 +125,14 @@ export interface FileRoutesByTo {
   '/vivendas-plano-de-acao': typeof VivendasPlanoDeAcaoRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/auth/google/callback': typeof AuthGoogleCallbackRoute
+  '/auth/google/start': typeof AuthGoogleStartRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/$condominio': typeof CondominioRoute
   '/admin': typeof AdminRoute
   '/gerenciar': typeof GerenciarRoute
@@ -109,11 +142,15 @@ export interface FileRoutesById {
   '/vivendas-plano-de-acao': typeof VivendasPlanoDeAcaoRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/auth/google/callback': typeof AuthGoogleCallbackRoute
+  '/auth/google/start': typeof AuthGoogleStartRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
     | '/$condominio'
     | '/admin'
     | '/gerenciar'
@@ -123,9 +160,13 @@ export interface FileRouteTypes {
     | '/vivendas-plano-de-acao'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/auth/logout'
     | '/.mcp/invoke-tool/$tool'
+    | '/auth/google/callback'
+    | '/auth/google/start'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/$condominio'
     | '/admin'
     | '/gerenciar'
@@ -135,9 +176,13 @@ export interface FileRouteTypes {
     | '/vivendas-plano-de-acao'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/auth/logout'
     | '/.mcp/invoke-tool/$tool'
+    | '/auth/google/callback'
+    | '/auth/google/start'
   id:
     | '__root__'
+    | '/'
     | '/$condominio'
     | '/admin'
     | '/gerenciar'
@@ -147,10 +192,14 @@ export interface FileRouteTypes {
     | '/vivendas-plano-de-acao'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/auth/logout'
     | '/.mcp/invoke-tool/$tool'
+    | '/auth/google/callback'
+    | '/auth/google/start'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   CondominioRoute: typeof CondominioRoute
   AdminRoute: typeof AdminRoute
   GerenciarRoute: typeof GerenciarRoute
@@ -160,7 +209,10 @@ export interface RootRouteChildren {
   VivendasPlanoDeAcaoRoute: typeof VivendasPlanoDeAcaoRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  AuthLogoutRoute: typeof AuthLogoutRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  AuthGoogleCallbackRoute: typeof AuthGoogleCallbackRoute
+  AuthGoogleStartRoute: typeof AuthGoogleStartRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -214,6 +266,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CondominioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/logout': {
+      id: '/auth/logout'
+      path: '/auth/logout'
+      fullPath: '/auth/logout'
+      preLoaderRoute: typeof AuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.well-known/oauth-protected-resource': {
       id: '/.well-known/oauth-protected-resource'
       path: '/.well-known/oauth-protected-resource'
@@ -228,6 +294,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/google/start': {
+      id: '/auth/google/start'
+      path: '/auth/google/start'
+      fullPath: '/auth/google/start'
+      preLoaderRoute: typeof AuthGoogleStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/google/callback': {
+      id: '/auth/google/callback'
+      path: '/auth/google/callback'
+      fullPath: '/auth/google/callback'
+      preLoaderRoute: typeof AuthGoogleCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -239,6 +319,7 @@ declare module '@tanstack/react-router' {
 }
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   CondominioRoute: CondominioRoute,
   AdminRoute: AdminRoute,
   GerenciarRoute: GerenciarRoute,
@@ -249,7 +330,10 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  AuthLogoutRoute: AuthLogoutRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  AuthGoogleCallbackRoute: AuthGoogleCallbackRoute,
+  AuthGoogleStartRoute: AuthGoogleStartRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
