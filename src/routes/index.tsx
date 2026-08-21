@@ -6,7 +6,7 @@ import { pageMeta } from "@/lib/page-meta";
 const searchSchema = z.object({
   error: z.enum(["state", "login_failed", "denied"]).optional(),
   reason: z.string().optional(),
-  status: z.string().optional(),
+  status: z.coerce.string().optional(),
 });
 
 const errorMessages: Record<string, string> = {
