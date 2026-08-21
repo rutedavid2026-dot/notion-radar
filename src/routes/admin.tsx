@@ -2,17 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Masthead } from "@/components/report/Masthead";
 import { pageMeta } from "@/lib/page-meta";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: pageMeta(
       "Equipe Síndicas — Relatório Semanal",
       "Dashboard consolidado e gerenciamento de links dos condomínios.",
     ),
   }),
-  component: IndexPage,
+  component: AdminPage,
 });
 
-function IndexPage() {
+function AdminPage() {
   return (
     <main className="bg-background min-h-screen">
       <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 md:px-8 md:py-10">

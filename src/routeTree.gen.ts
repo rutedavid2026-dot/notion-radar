@@ -14,8 +14,8 @@ import { Route as RelatorioGeralRouteImport } from './routes/relatorio-geral'
 import { Route as OutrosFollowUpsRouteImport } from './routes/outros-follow-ups'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as GerenciarRouteImport } from './routes/gerenciar'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CondominioRouteImport } from './routes/$condominio'
-import { Route as IndexRouteImport } from './routes/index'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -45,14 +45,14 @@ const GerenciarRoute = GerenciarRouteImport.update({
   path: '/gerenciar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CondominioRoute = CondominioRouteImport.update({
   id: '/$condominio',
   path: '/$condominio',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
@@ -75,8 +75,8 @@ const Char91DotmcpChar93InvokeToolToolRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
   '/$condominio': typeof CondominioRoute
+  '/admin': typeof AdminRoute
   '/gerenciar': typeof GerenciarRoute
   '/mcp': typeof McpRoute
   '/outros-follow-ups': typeof OutrosFollowUpsRoute
@@ -87,8 +87,8 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
   '/$condominio': typeof CondominioRoute
+  '/admin': typeof AdminRoute
   '/gerenciar': typeof GerenciarRoute
   '/mcp': typeof McpRoute
   '/outros-follow-ups': typeof OutrosFollowUpsRoute
@@ -100,8 +100,8 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
   '/$condominio': typeof CondominioRoute
+  '/admin': typeof AdminRoute
   '/gerenciar': typeof GerenciarRoute
   '/mcp': typeof McpRoute
   '/outros-follow-ups': typeof OutrosFollowUpsRoute
@@ -114,8 +114,8 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
     | '/$condominio'
+    | '/admin'
     | '/gerenciar'
     | '/mcp'
     | '/outros-follow-ups'
@@ -126,8 +126,8 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/$condominio'
+    | '/admin'
     | '/gerenciar'
     | '/mcp'
     | '/outros-follow-ups'
@@ -138,8 +138,8 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
   id:
     | '__root__'
-    | '/'
     | '/$condominio'
+    | '/admin'
     | '/gerenciar'
     | '/mcp'
     | '/outros-follow-ups'
@@ -151,8 +151,8 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   CondominioRoute: typeof CondominioRoute
+  AdminRoute: typeof AdminRoute
   GerenciarRoute: typeof GerenciarRoute
   McpRoute: typeof McpRoute
   OutrosFollowUpsRoute: typeof OutrosFollowUpsRoute
@@ -200,18 +200,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GerenciarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$condominio': {
       id: '/$condominio'
       path: '/$condominio'
       fullPath: '/$condominio'
       preLoaderRoute: typeof CondominioRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.well-known/oauth-protected-resource': {
@@ -239,8 +239,8 @@ declare module '@tanstack/react-router' {
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   CondominioRoute: CondominioRoute,
+  AdminRoute: AdminRoute,
   GerenciarRoute: GerenciarRoute,
   McpRoute: McpRoute,
   OutrosFollowUpsRoute: OutrosFollowUpsRoute,
