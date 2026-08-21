@@ -54,12 +54,16 @@ export const Route = createFileRoute("/auth/google/callback")({
         });
 
         if (!tokenRes.ok) {
-          return redirectTo(`${origin}/?error=login_failed`);
+          const detail = await tokenRes.text();
+          console.error("Google token exchange failed:", tokenRes.status, detail);
+          return redirectTo(
+            `${origin}/?error=login_failed&reason=token_exchange&status=${tokenRes.status}`,
+          );
         }
 
         const tokenJson = (await tokenRes.json()) as { id_token?: string };
         if (!tokenJson.id_token) {
-          return redirectTo(`${origin}/?error=login_failed`);
+          return redirectTo(`${origin}/?error=login_failed&reason=no_id_token`);
         }
 
         const claims = decodeIdToken(tokenJson.id_token);
@@ -68,7 +72,14 @@ export const Route = createFileRoute("/auth/google/callback")({
         const notExpired = !!claims.exp && claims.exp * 1000 > Date.now();
 
         if (!claims.email || !emailVerified || !validAudience || !notExpired) {
-          return redirectTo(`${origin}/?error=login_failed`);
+          const reason = !claims.email
+            ? "no_email"
+            : !emailVerified
+              ? "email_unverified"
+              : !validAudience
+                ? "bad_audience"
+                : "expired";
+          return redirectTo(`${origin}/?error=login_failed&reason=${reason}`);
         }
 
         if (!isEmailAllowed(claims.email)) {

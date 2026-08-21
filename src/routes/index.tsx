@@ -5,6 +5,8 @@ import { pageMeta } from "@/lib/page-meta";
 
 const searchSchema = z.object({
   error: z.enum(["state", "login_failed", "denied"]).optional(),
+  reason: z.string().optional(),
+  status: z.string().optional(),
 });
 
 const errorMessages: Record<string, string> = {
@@ -25,7 +27,7 @@ export const Route = createFileRoute("/")({
 });
 
 function LoginPage() {
-  const { error } = Route.useSearch();
+  const { error, reason, status } = Route.useSearch();
 
   return (
     <main className="bg-background flex min-h-screen items-center justify-center px-4">
@@ -40,6 +42,12 @@ function LoginPage() {
           {error && (
             <p className="text-destructive rounded-md bg-destructive/10 p-2 text-xs">
               {errorMessages[error]}
+              {reason && (
+                <span className="mt-1 block opacity-70">
+                  ({reason}
+                  {status ? ` · HTTP ${status}` : ""})
+                </span>
+              )}
             </p>
           )}
 
