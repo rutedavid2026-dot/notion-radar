@@ -1,5 +1,5 @@
 import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { z } from "zod";
@@ -267,10 +267,15 @@ function RelatorioGeralPage() {
     <main className="bg-muted/40 min-h-screen">
       <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 md:px-8 md:py-10">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Conectado como {user.email}</span>
-          <a href="/auth/logout" className="hover:text-brand-green transition-colors">
-            Sair
-          </a>
+          <Link to="/admin" className="hover:text-brand-green transition-colors">
+            ← Voltar ao menu
+          </Link>
+          <span className="flex items-center gap-3">
+            Conectado como {user.email}
+            <a href="/auth/logout" className="hover:text-brand-green transition-colors">
+              Sair
+            </a>
+          </span>
         </div>
 
         {allResult.errors.length > 0 && (

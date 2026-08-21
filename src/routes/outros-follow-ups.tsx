@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { getOutrosFollowUps, type OutroFollowUpEntry } from "@/lib/sheets.functions";
 import { formatDatePt } from "@/lib/report-utils";
 import { pageMeta } from "@/lib/page-meta";
@@ -61,10 +61,15 @@ function OutrosFollowUpsPage() {
     <main className="bg-background min-h-screen">
       <div className="mx-auto max-w-4xl space-y-5 px-4 py-6 md:px-8 md:py-10">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Conectado como {user.email}</span>
-          <a href="/auth/logout" className="hover:text-brand-green transition-colors">
-            Sair
-          </a>
+          <Link to="/admin" className="hover:text-brand-green transition-colors">
+            ← Voltar ao menu
+          </Link>
+          <span className="flex items-center gap-3">
+            Conectado como {user.email}
+            <a href="/auth/logout" className="hover:text-brand-green transition-colors">
+              Sair
+            </a>
+          </span>
         </div>
 
         <Masthead condominio="" />
