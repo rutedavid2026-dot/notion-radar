@@ -101,6 +101,7 @@ export const Route = createFileRoute("/relatorio-geral")({
 });
 
 function RelatorioGeralPage() {
+  const { user } = Route.useRouteContext();
   const search = Route.useSearch();
   const { data: registryResult } = useSuspenseQuery(registryQueryOptions);
   const { data: allResult } = useSuspenseQuery(allDemandasQueryOptions);
@@ -265,6 +266,13 @@ function RelatorioGeralPage() {
   return (
     <main className="bg-muted/40 min-h-screen">
       <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 md:px-8 md:py-10">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Conectado como {user.email}</span>
+          <a href="/auth/logout" className="hover:text-brand-green transition-colors">
+            Sair
+          </a>
+        </div>
+
         {allResult.errors.length > 0 && (
           <div className="border-destructive/40 bg-destructive/10 text-destructive flex items-start gap-3 rounded-xl border p-4">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />

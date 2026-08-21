@@ -54,11 +54,19 @@ function CopyLinkButton({ url }: { url: string }) {
 }
 
 function GerenciarPage() {
+  const { user } = Route.useRouteContext();
   const { data: result } = useSuspenseQuery(followUpsQueryOptions);
 
   return (
     <main className="bg-background min-h-screen">
       <div className="mx-auto max-w-4xl space-y-5 px-4 py-6 md:px-8 md:py-10">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Conectado como {user.email}</span>
+          <a href="/auth/logout" className="hover:text-brand-green transition-colors">
+            Sair
+          </a>
+        </div>
+
         <Masthead condominio="" />
 
         {result.data.length === 0 ? (
