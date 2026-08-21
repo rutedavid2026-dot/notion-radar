@@ -126,7 +126,14 @@ function PlanoDeAcaoPage() {
   const [prioridadeFiltro, setPrioridadeFiltro] = useState(ALL);
   const [areaFiltro, setAreaFiltro] = useState(ALL);
 
-  const allRows = planoQuery.data?.data ?? [];
+  const allRows = useMemo(
+    () =>
+      (planoQuery.data?.data ?? []).map((r) => ({
+        ...r,
+        status: r.status.charAt(0).toUpperCase() + r.status.slice(1),
+      })),
+    [planoQuery.data],
+  );
 
   const statuses = useMemo(() => uniqueSorted(allRows.map((r) => r.status)), [allRows]);
   const prioridades = useMemo(() => uniqueSorted(allRows.map((r) => r.prioridade)), [allRows]);
@@ -134,12 +141,14 @@ function PlanoDeAcaoPage() {
 
   const filtered = useMemo(
     () =>
-      allRows.filter(
-        (r) =>
-          (statusFiltro === ALL || r.status === statusFiltro) &&
-          (prioridadeFiltro === ALL || r.prioridade === prioridadeFiltro) &&
-          (areaFiltro === ALL || r.area === areaFiltro),
-      ),
+      allRows
+        .filter(
+          (r) =>
+            (statusFiltro === ALL || r.status === statusFiltro) &&
+            (prioridadeFiltro === ALL || r.prioridade === prioridadeFiltro) &&
+            (areaFiltro === ALL || r.area === areaFiltro),
+        )
+        .sort((a, b) => a.acao.localeCompare(b.acao, "pt-BR")),
     [allRows, statusFiltro, prioridadeFiltro, areaFiltro],
   );
 
