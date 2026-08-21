@@ -16,7 +16,6 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as GerenciarRouteImport } from './routes/gerenciar'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CondominioRouteImport } from './routes/$condominio'
-import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -59,11 +58,6 @@ const CondominioRoute = CondominioRouteImport.update({
   path: '/$condominio',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthLogoutRoute = AuthLogoutRouteImport.update({
   id: '/auth/logout',
   path: '/auth/logout',
@@ -99,7 +93,6 @@ const Char91DotmcpChar93InvokeToolToolRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
   '/$condominio': typeof CondominioRoute
   '/admin': typeof AdminRoute
   '/gerenciar': typeof GerenciarRoute
@@ -115,7 +108,6 @@ export interface FileRoutesByFullPath {
   '/auth/google/start': typeof AuthGoogleStartRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
   '/$condominio': typeof CondominioRoute
   '/admin': typeof AdminRoute
   '/gerenciar': typeof GerenciarRoute
@@ -132,7 +124,6 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
   '/$condominio': typeof CondominioRoute
   '/admin': typeof AdminRoute
   '/gerenciar': typeof GerenciarRoute
@@ -150,7 +141,6 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
     | '/$condominio'
     | '/admin'
     | '/gerenciar'
@@ -166,7 +156,6 @@ export interface FileRouteTypes {
     | '/auth/google/start'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/$condominio'
     | '/admin'
     | '/gerenciar'
@@ -182,7 +171,6 @@ export interface FileRouteTypes {
     | '/auth/google/start'
   id:
     | '__root__'
-    | '/'
     | '/$condominio'
     | '/admin'
     | '/gerenciar'
@@ -199,7 +187,6 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   CondominioRoute: typeof CondominioRoute
   AdminRoute: typeof AdminRoute
   GerenciarRoute: typeof GerenciarRoute
@@ -266,13 +253,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CondominioRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth/logout': {
       id: '/auth/logout'
       path: '/auth/logout'
@@ -319,7 +299,6 @@ declare module '@tanstack/react-router' {
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   CondominioRoute: CondominioRoute,
   AdminRoute: AdminRoute,
   GerenciarRoute: GerenciarRoute,
