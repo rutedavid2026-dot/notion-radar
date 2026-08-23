@@ -6,12 +6,12 @@
 // "Gestão em Movimento - Relatórios Semanais" já É uma database no Notion
 // (full-page database, sem página-mãe), criada e nomeada manualmente antes
 // desta automação existir — as colunas abaixo (Condominio/Semana/Intervalo
-// de Semana/Link dto Report) são as que já existiam e continuam sendo as
+// de Semana/Link do Report) são as que já existiam e continuam sendo as
 // usadas; nunca renomear ou recriar via API.
 //
 // Bug corrigido: esta automação estava gravando em propriedades
 // Nome/Datas/URL, que não existem na database (o schema real usa
-// Condominio/Intervalo de Semana/Link dto Report) — toda sincronização
+// Condominio/Intervalo de Semana/Link do Report) — toda sincronização
 // falhava silenciosamente desde então (erro pego e só jogado no log de
 // capturarTodasFotografias, com o prefixo "espelho Notion Relatórios
 // Semanais"), e por isso a database ficou parada nas últimas 14 linhas
@@ -198,7 +198,7 @@ function montarPropriedadesFollowUp(condominio, semanaN, dataInicio, dataFim, li
     Condominio: { title: [{ text: { content: condominio } }] },
     Semana: { number: semanaN },
     "Intervalo de Semana": { date: { start: dataInicio, end: dataFim } },
-    "Link dto Report": { url: link },
+    "Link do Report": { url: link },
   };
 }
 

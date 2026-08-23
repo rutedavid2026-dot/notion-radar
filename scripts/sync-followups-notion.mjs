@@ -128,7 +128,7 @@ function montarPropriedades(condominio, semana, dataInicio, dataFim, link) {
     Condominio: { title: [{ text: { content: condominio } }] },
     Semana: { number: semana },
     "Intervalo de Semana": { date: { start: dataInicio, end: dataFim } },
-    "Link dto Report": { url: link },
+    "Link do Report": { url: link },
   };
 }
 
