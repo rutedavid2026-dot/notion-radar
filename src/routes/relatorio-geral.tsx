@@ -242,6 +242,7 @@ function RelatorioGeralPage() {
       ),
     [abertas],
   );
+  const concluidasRows = useMemo(() => filtered.filter((r) => isFechada(r.status)), [filtered]);
   const construtora = useMemo(
     () => filtered.filter((r) => temResponsavel(r.responsavel, "Construtora")),
     [filtered],
@@ -259,7 +260,7 @@ function RelatorioGeralPage() {
     ? (historicoQuery.data?.capturadoEm ?? null)
     : dataUltimaEdicaoLive;
 
-  const descricao = `Este dashboard gerencial apresenta o acompanhamento consolidado das tarefas de ${isTodosCondominios ? "todos os condomínios" : condominioLabel}, com foco em tarefa, data de criação, status e última atualização registrada. Foram consideradas ${kpis.total} tarefa${kpis.total === 1 ? "" : "s"} no total; as concluídas aparecem nos gráficos e totais, e o detalhamento operacional prioriza as tarefas ainda em movimento.`;
+  const descricao = `Este dashboard gerencial apresenta o acompanhamento consolidado das tarefas de ${isTodosCondominios ? "todos os condomínios" : condominioLabel}, com foco em tarefa, data de criação, status e última atualização registrada. Foram consideradas ${kpis.total} tarefa${kpis.total === 1 ? "" : "s"} no total; o detalhamento abaixo organiza as tarefas em aberto por prioridade, com as concluídas numa seção própria.`;
 
   const mostraCondominioNasTabelas = isTodosCondominios || selecionadosIds.length > 1;
 
@@ -345,6 +346,13 @@ function RelatorioGeralPage() {
               title="Tarefas em Aberto - Acompanhamento Operacional"
               description="Demais tarefas em andamento, não iniciadas, agendadas ou aguardando providências."
               rows={operacionais}
+              showCondominio={mostraCondominioNasTabelas}
+            />
+
+            <DemandaSectionTable
+              title="Tarefas Concluídas"
+              description="Tarefas já concluídas ou canceladas, de todas as prioridades."
+              rows={concluidasRows}
               showCondominio={mostraCondominioNasTabelas}
             />
 

@@ -2,7 +2,7 @@
 // CapturaSemanal.gs. Os três arquivos vivem no mesmo projeto Apps Script,
 // vinculado à planilha "base-gestao-em-movimento".
 
-const CONFIG_SHEET_NAME = "Configuração";
+const CONFIG_SHEET_NAME = "_configuracao";
 const COL_CONDOMINIO = 1; // A
 const COL_URL = 2; // B
 const COL_ABA = 3; // C — guarda o GID (numérico) da aba de histórico do condomínio
@@ -180,4 +180,59 @@ function configurarColunaId() {
   });
 
   Logger.log("✅ Coluna 'id' configurada e preenchida pros condomínios existentes.");
+}
+
+// Execução manual (rodar pelo editor Apps Script sempre que quiser
+// reordenar): coloca as abas de histórico de cada condomínio em ordem
+// alfabética (ignorando acentos/caixa), da esquerda pra direita. As demais
+// abas (ex.: "_configuracao", "Follow-up da semana", "Outros Follow-ups",
+// "Vivendas - Plano de Ação") mantêm a ordem relativa que já tinham entre
+// si, mas são agrupadas no início — senão, como algumas delas nascem no
+// meio da fila de condomínios (criadas depois, via insertSheet), mover só
+// as abas de condomínio intercala tudo em vez de agrupar.
+function organizarAbasCondominiosAlfabeticamente() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+  if (!configSheet) return;
+
+  const lastRow = configSheet.getLastRow();
+  if (lastRow < 2) return;
+
+  const dados = configSheet.getRange(2, 1, lastRow - 1, COL_ABA).getValues();
+  const condominios = dados
+    .map(function (row) {
+      const nome = String(row[COL_CONDOMINIO - 1] || "").trim();
+      const gid = row[COL_ABA - 1];
+      if (!nome || !gid) return null;
+      const sheet = getSheetByGid(ss, gid);
+      if (!sheet) return null;
+      return { nome: nome, sheet: sheet };
+    })
+    .filter(Boolean);
+
+  condominios.sort(function (a, b) {
+    return a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
+  });
+
+  const nomesCondominio = condominios.map(function (c) {
+    return c.sheet.getName();
+  });
+  const abasFixas = ss.getSheets().filter(function (s) {
+    return nomesCondominio.indexOf(s.getName()) === -1;
+  });
+
+  const ordemFinal = abasFixas.concat(
+    condominios.map(function (c) {
+      return c.sheet;
+    }),
+  );
+
+  ordemFinal.forEach(function (sheet, i) {
+    sheet.activate();
+    ss.moveActiveSheet(i + 1);
+  });
+
+  Logger.log(
+    "✅ " + condominios.length + " abas de condomínio reordenadas em ordem alfabética.",
+  );
 }

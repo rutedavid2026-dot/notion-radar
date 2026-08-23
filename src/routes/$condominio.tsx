@@ -210,6 +210,7 @@ function ReportPage() {
       ),
     [abertas],
   );
+  const concluidasRows = useMemo(() => filtered.filter((r) => isFechada(r.status)), [filtered]);
   const construtora = useMemo(
     () =>
       filtered.filter(
@@ -230,7 +231,7 @@ function ReportPage() {
     ? (historicoQuery.data?.capturadoEm ?? null)
     : dataUltimaEdicaoLive;
 
-  const descricao = `Este follow-up apresenta a leitura consolidada das tarefas do ${condominioLabel}, com foco em tarefa, data de criação, status e última atualização registrada. Foram consideradas ${kpis.total} tarefa${kpis.total === 1 ? "" : "s"} no total; as concluídas aparecem nos gráficos e totais, e o detalhamento operacional prioriza as tarefas ainda em movimento.`;
+  const descricao = `Este follow-up apresenta a leitura consolidada das tarefas do ${condominioLabel}, com foco em tarefa, data de criação, status e última atualização registrada. Foram consideradas ${kpis.total} tarefa${kpis.total === 1 ? "" : "s"} no total; o detalhamento abaixo organiza as tarefas em aberto por prioridade, com as concluídas numa seção própria.`;
 
   return (
     <main className="bg-background min-h-screen">
@@ -295,6 +296,12 @@ function ReportPage() {
               title="Tarefas em Aberto - Acompanhamento Operacional"
               description="Demais tarefas em andamento, não iniciadas, agendadas ou aguardando providências."
               rows={operacionais}
+            />
+
+            <DemandaSectionTable
+              title="Tarefas Concluídas"
+              description="Tarefas já concluídas ou canceladas, de todas as prioridades."
+              rows={concluidasRows}
             />
 
             {construtora.length > 0 && (

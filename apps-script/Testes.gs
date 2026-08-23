@@ -459,6 +459,10 @@ function logSchemaDatabaseComTokens(tokens, dbId) {
         if (prop.type === "status" && prop.status && prop.status.options) {
           linha += "\n    opções: " + prop.status.options.map(function (o) { return o.name; }).join(", ");
         }
+        if (prop.type === "multi_select" && prop.multi_select && prop.multi_select.options) {
+          linha +=
+            "\n    opções: " + prop.multi_select.options.map(function (o) { return o.name; }).join(", ");
+        }
         if (prop.type === "relation" && prop.relation) {
           linha += "\n    relation database_id: " + prop.relation.database_id;
         }
