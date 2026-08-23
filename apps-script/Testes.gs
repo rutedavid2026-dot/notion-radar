@@ -395,6 +395,46 @@ function limparFollowUpsDeSemanasInexistentesNoHistorico() {
 // outra usada como referência/molde. Não altera nada, só loga os dois
 // schemas lado a lado pra eu conseguir montar o diff certo antes de propor
 // os ajustes.
+// Só leitura, nenhuma chamada UrlFetchApp (não gasta a cota diária que o
+// backfill do Notion estourou) — despeja a aba "Follow-up da semana" como
+// texto (uma linha por condomínio+semana, campos separados por tab) pra
+// copiar do log e sincronizar com o Notion por fora do Apps Script (direto
+// via curl), contornando a cota.
+function teste10_ExportarFollowUpsComoTexto() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(FOLLOWUP_SHEET_NAME);
+  if (!sheet) {
+    Logger.log("❌ Aba '" + FOLLOWUP_SHEET_NAME + "' não encontrada.");
+    return;
+  }
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    Logger.log("Aba '" + FOLLOWUP_SHEET_NAME + "' está vazia.");
+    return;
+  }
+
+  const linhas = sheet.getRange(2, 1, lastRow - 1, HEADERS_FOLLOWUP.length).getValues();
+  const textos = linhas
+    .filter(function (row) {
+      return String(row[0] || "").trim() && Number(row[1]);
+    })
+    .map(function (row) {
+      return [
+        String(row[0]).trim(),
+        Number(row[1]),
+        String(row[2] || "").trim(),
+        formatIsoDeCelula(row[3]),
+        formatIsoDeCelula(row[4]),
+      ].join("\t");
+    });
+
+  Logger.log("Total: " + textos.length + " linha(s).");
+  const TAMANHO_LOTE = 15;
+  for (let i = 0; i < textos.length; i += TAMANHO_LOTE) {
+    Logger.log(textos.slice(i, i + TAMANHO_LOTE).join("\n"));
+  }
+}
+
 function teste7_CompararSchemaDatabases() {
   const props = PropertiesService.getScriptProperties();
   const tokens = getNotionTokens(props);

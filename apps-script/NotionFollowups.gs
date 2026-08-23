@@ -4,70 +4,27 @@
 // mesmo loop semanal de CapturaSemanal.gs — ver capturarTodasFotografias().
 //
 // "Gestão em Movimento - Relatórios Semanais" já É uma database no Notion
-// (full-page database, sem página-mãe) — não criamos uma database nova, só
-// configuramos as colunas dela e gravamos as linhas direto ali.
+// (full-page database, sem página-mãe), criada e nomeada manualmente antes
+// desta automação existir — as colunas abaixo (Condominio/Semana/Intervalo
+// de Semana/Link dto Report) são as que já existiam e continuam sendo as
+// usadas; nunca renomear ou recriar via API.
 //
-// Setup (rodar uma vez, manualmente, pelo editor Apps Script):
-//   1. Compartilhar essa database com a integração do Notion (menu "..." >
-//      Connections > Add connection), usando o mesmo token que já está em
-//      NOTION_API_KEY / NOTION_API_KEY_2 / NOTION_API_KEY_3.
-//   2. Rodar configurarPropriedadesFollowUpsNotion().
-//   3. Rodar sincronizarTodosFollowUpsNotion() pra popular o histórico
-//      completo (todas as semanas já capturadas de todos os condomínios) —
-//      só precisa rodar uma vez; dali em diante, capturarTodasFotografias()
-//      (o trigger semanal) já mantém a semana corrente em dia sozinho.
+// Bug corrigido: esta automação estava gravando em propriedades
+// Nome/Datas/URL, que não existem na database (o schema real usa
+// Condominio/Intervalo de Semana/Link dto Report) — toda sincronização
+// falhava silenciosamente desde então (erro pego e só jogado no log de
+// capturarTodasFotografias, com o prefixo "espelho Notion Relatórios
+// Semanais"), e por isso a database ficou parada nas últimas 14 linhas
+// (semanas 33-34, os 7 condomínios originais) sem os condomínios
+// adicionados depois.
+//
+// Setup: a database já está com o schema certo e compartilhada com a
+// integração — só rodar sincronizarTodosFollowUpsNotion() uma vez pra
+// recuperar o histórico que ficou faltando; dali em diante,
+// capturarTodasFotografias() (o trigger semanal) mantém tudo em dia
+// sozinho.
 
 const NOTION_FOLLOWUPS_DB_ID = "3c1e69ba114f8020b465f0db2be179ee";
-
-// Execução única — garante que a database tenha as colunas Nome/Semana/
-// Datas/URL. Idempotente por natureza (reaplicar o mesmo schema não tem
-// efeito colateral), então pode ser rodada de novo sem problema.
-function configurarPropriedadesFollowUpsNotion() {
-  const props = PropertiesService.getScriptProperties();
-  const tokens = getNotionTokens(props);
-  if (tokens.length === 0) {
-    throw new Error("Configure NOTION_API_KEY em Script Properties.");
-  }
-
-  let ultimoErro = null;
-  for (let i = 0; i < tokens.length; i++) {
-    try {
-      configurarPropriedadesFollowUps(tokens[i]);
-      Logger.log("✅ Colunas configuradas na database " + NOTION_FOLLOWUPS_DB_ID + ".");
-      return;
-    } catch (err) {
-      ultimoErro = err;
-    }
-  }
-  throw ultimoErro;
-}
-
-// Renomeia a coluna de título padrão ("Name") para "Nome" e garante as
-// colunas Semana/Datas/URL — referenciar uma propriedade existente pelo
-// nome atual e incluir "name" no corpo é como o Notion renomeia.
-function configurarPropriedadesFollowUps(token) {
-  const headers = { Authorization: "Bearer " + token, "Notion-Version": NOTION_VERSION };
-  const body = {
-    properties: {
-      Name: { name: "Nome" },
-      Semana: { number: {} },
-      Datas: { date: {} },
-      URL: { url: {} },
-    },
-  };
-  const res = UrlFetchApp.fetch("https://api.notion.com/v1/databases/" + NOTION_FOLLOWUPS_DB_ID, {
-    method: "patch",
-    headers: headers,
-    contentType: "application/json",
-    payload: JSON.stringify(body),
-    muteHttpExceptions: true,
-  });
-  const json = JSON.parse(res.getContentText());
-  if (json.object === "error") {
-    throw new Error("Notion API: " + (json.message || res.getContentText()));
-  }
-  return json;
-}
 
 // Chamado a cada condomínio, dentro do loop de capturarTodasFotografias
 // (CapturaSemanal.gs) — só sincroniza a semana corrente. Monta o link e
@@ -83,6 +40,11 @@ function sincronizarFollowUpComTokens(tokens, dbId, condominio, id, semana) {
 // a semana atual. Rodar uma vez pra popular a database do zero; depois
 // disso o trigger semanal (capturarTodasFotografias) mantém tudo em dia
 // incrementalmente.
+//
+// Otimizado pra não estourar o limite de 6 minutos de execução do Apps
+// Script: descobre o token válido pra essa database UMA vez (em vez de
+// testar tokens errados a cada linha) e busca todas as páginas já
+// existentes de uma vez só (em vez de uma query por linha).
 function sincronizarTodosFollowUpsNotion() {
   const props = PropertiesService.getScriptProperties();
   const tokens = getNotionTokens(props);
@@ -102,6 +64,9 @@ function sincronizarTodosFollowUpsNotion() {
     return;
   }
 
+  const token = encontrarTokenFollowUpsNotion(tokens);
+  const existentes = buscarTodasPaginasFollowUpNotion(token);
+
   const linhas = sheet.getRange(2, 1, lastRow - 1, HEADERS_FOLLOWUP.length).getValues();
   const erros = [];
   let ok = 0;
@@ -114,8 +79,16 @@ function sincronizarTodosFollowUpsNotion() {
     const dataFim = formatIsoDeCelula(row[4]);
     if (!condominio || !semanaN || !link) return;
 
+    const properties = montarPropriedadesFollowUp(condominio, semanaN, dataInicio, dataFim, link);
+    const chave = condominio + "|||" + semanaN;
+
     try {
-      sincronizarLinhaFollowUpComTokens(tokens, NOTION_FOLLOWUPS_DB_ID, condominio, semanaN, dataInicio, dataFim, link);
+      if (existentes[chave]) {
+        atualizarPaginaFollowUp(token, existentes[chave], properties);
+      } else {
+        const pagina = criarPaginaFollowUp(token, NOTION_FOLLOWUPS_DB_ID, properties);
+        existentes[chave] = pagina.id;
+      }
       ok++;
     } catch (err) {
       erros.push(condominio + " (semana " + semanaN + "): " + err.message);
@@ -126,6 +99,62 @@ function sincronizarTodosFollowUpsNotion() {
   if (erros.length > 0) {
     Logger.log("Falhas:\n" + erros.join("\n"));
   }
+}
+
+// Testa cada token com uma chamada leve (retrieve da database) até achar o
+// que tem acesso — evita repetir esse teste a cada linha do backfill.
+function encontrarTokenFollowUpsNotion(tokens) {
+  const headers = function (token) {
+    return { Authorization: "Bearer " + token, "Notion-Version": NOTION_VERSION };
+  };
+  let ultimoErro = null;
+  for (let i = 0; i < tokens.length; i++) {
+    const res = UrlFetchApp.fetch("https://api.notion.com/v1/databases/" + NOTION_FOLLOWUPS_DB_ID, {
+      method: "get",
+      headers: headers(tokens[i]),
+      muteHttpExceptions: true,
+    });
+    const json = JSON.parse(res.getContentText());
+    if (json.object !== "error") return tokens[i];
+    ultimoErro = new Error("Notion API: " + (json.message || res.getContentText()));
+  }
+  throw ultimoErro || new Error("Nenhum token configurado.");
+}
+
+// Pagina a database inteira uma vez e monta um mapa "condominio|||semana" ->
+// pageId, pra decidir criar/atualizar sem uma query por linha.
+function buscarTodasPaginasFollowUpNotion(token) {
+  const headers = { Authorization: "Bearer " + token, "Notion-Version": NOTION_VERSION };
+  const mapa = {};
+  let cursor = null;
+  do {
+    const body = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const res = UrlFetchApp.fetch(
+      "https://api.notion.com/v1/databases/" + NOTION_FOLLOWUPS_DB_ID + "/query",
+      {
+        method: "post",
+        headers: headers,
+        contentType: "application/json",
+        payload: JSON.stringify(body),
+        muteHttpExceptions: true,
+      },
+    );
+    const json = JSON.parse(res.getContentText());
+    if (json.object === "error") {
+      throw new Error("Notion API: " + (json.message || res.getContentText()));
+    }
+    json.results.forEach(function (page) {
+      const titulo = page.properties.Condominio.title;
+      const nome = titulo.length > 0 ? titulo[0].plain_text : "";
+      const semana = page.properties.Semana.number;
+      if (nome && semana != null) {
+        mapa[nome + "|||" + semana] = page.id;
+      }
+    });
+    cursor = json.has_more ? json.next_cursor : null;
+  } while (cursor);
+  return mapa;
 }
 
 // A aba "Follow-up da semana" guarda data-inicio/data-termino como string
@@ -166,22 +195,22 @@ function sincronizarLinhaFollowUpNotion(token, dbId, condominio, semanaN, dataIn
 
 function montarPropriedadesFollowUp(condominio, semanaN, dataInicio, dataFim, link) {
   return {
-    Nome: { title: [{ text: { content: condominio } }] },
+    Condominio: { title: [{ text: { content: condominio } }] },
     Semana: { number: semanaN },
-    Datas: { date: { start: dataInicio, end: dataFim } },
-    URL: { url: link },
+    "Intervalo de Semana": { date: { start: dataInicio, end: dataFim } },
+    "Link dto Report": { url: link },
   };
 }
 
-// Filtra por Nome (title) + Semana (number) — mesma chave de dedup usada em
-// removerFollowUpExistente (Config.gs). Só pode haver 0 ou 1 resultado nessa
-// combinação; não precisa paginar.
+// Filtra por Condominio (title) + Semana (number) — mesma chave de dedup
+// usada em removerFollowUpExistente (Config.gs). Só pode haver 0 ou 1
+// resultado nessa combinação; não precisa paginar.
 function buscarPaginaFollowUpExistente(token, dbId, condominio, semanaN) {
   const headers = { Authorization: "Bearer " + token, "Notion-Version": NOTION_VERSION };
   const body = {
     filter: {
       and: [
-        { property: "Nome", title: { equals: condominio } },
+        { property: "Condominio", title: { equals: condominio } },
         { property: "Semana", number: { equals: semanaN } },
       ],
     },

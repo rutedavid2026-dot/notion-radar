@@ -1,0 +1,20 @@
+name: Sincronizar Follow-ups no Notion
+
+on:
+  schedule:
+    # Toda sexta às 15:00 UTC (12:00 no horário de Brasília), depois da
+    # captura semanal do Apps Script (que roda 8h-9h no horário de Brasília).
+    - cron: "0 15 * * 5"
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/sync-followups-notion.mjs
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
