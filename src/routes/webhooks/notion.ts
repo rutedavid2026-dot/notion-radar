@@ -202,6 +202,9 @@ async function dispararCaptura(spreadsheetId: string, sheetsToken: string | null
         Authorization: `Bearer ${token}`,
         Accept: "application/vnd.github+json",
         "Content-Type": "application/json",
+        // Obrigatório pela API do GitHub — sem isso, todo request leva 403
+        // "forbidden by administrative rules" (confirmado em 2026-08-25).
+        "User-Agent": "gestao-em-movimento-webhook",
       },
       body: JSON.stringify({ ref: "main" }),
     },
