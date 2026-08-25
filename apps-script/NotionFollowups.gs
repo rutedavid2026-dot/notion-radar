@@ -27,12 +27,24 @@
 const NOTION_FOLLOWUPS_DB_ID = "3c1e69ba114f8020b465f0db2be179ee";
 
 // Chamado a cada condomínio, dentro do loop de capturarTodasFotografias
-// (CapturaSemanal.gs) — só sincroniza a semana corrente. Monta o link e
-// delega pro upsert genérico (sincronizarLinhaFollowUpComTokens), que é o
-// mesmo usado pelo backfill de histórico completo (sincronizarTodosFollowUpsNotion).
-function sincronizarFollowUpComTokens(tokens, dbId, condominio, id, semana) {
+// (CapturaSemanal.gs) — só sincroniza a semana corrente. Recebe o token já
+// descoberto e o mapa de páginas existentes (ver
+// encontrarTokenFollowUpsNotion/buscarTodasPaginasFollowUpNotion, chamadas
+// UMA vez antes do loop) em vez de testar tokens e consultar a existência da
+// página a cada condomínio — era esse N+1 (2 requisições Notion por
+// condomínio, cada uma podendo tentar até 3 tokens) que fazia
+// capturarTodasFotografias estourar o limite de 6 minutos do Apps Script com
+// vários condomínios cadastrados.
+function sincronizarFollowUpComMapa(token, existentes, dbId, condominio, id, semana) {
   const link = montarLinkFollowUp(id, semana.start, semana.end);
-  sincronizarLinhaFollowUpComTokens(tokens, dbId, condominio, semana.n, semana.start, semana.end, link);
+  const properties = montarPropriedadesFollowUp(condominio, semana.n, semana.start, semana.end, link);
+  const chave = condominio + "|||" + semana.n;
+  if (existentes[chave]) {
+    atualizarPaginaFollowUp(token, existentes[chave], properties);
+  } else {
+    const pagina = criarPaginaFollowUp(token, dbId, properties);
+    existentes[chave] = pagina.id;
+  }
 }
 
 // Execução sob demanda — sincroniza TODO o histórico já existente na aba
@@ -166,33 +178,6 @@ function formatIsoDeCelula(value) {
   return String(value || "");
 }
 
-// Upsert de UMA linha (condominio + semana). Tenta cada token até um
-// conseguir consultar/gravar — mesmo padrão de buscarDemandasComTokens.
-function sincronizarLinhaFollowUpComTokens(tokens, dbId, condominio, semanaN, dataInicio, dataFim, link) {
-  let ultimoErro = null;
-  for (let i = 0; i < tokens.length; i++) {
-    try {
-      sincronizarLinhaFollowUpNotion(tokens[i], dbId, condominio, semanaN, dataInicio, dataFim, link);
-      return;
-    } catch (err) {
-      ultimoErro = err;
-    }
-  }
-  throw ultimoErro;
-}
-
-// Reescreve todas as propriedades em ambos os casos (criar/atualizar) —
-// mais simples que PATCH parcial e sem risco de deixar campo desatualizado.
-function sincronizarLinhaFollowUpNotion(token, dbId, condominio, semanaN, dataInicio, dataFim, link) {
-  const properties = montarPropriedadesFollowUp(condominio, semanaN, dataInicio, dataFim, link);
-  const existente = buscarPaginaFollowUpExistente(token, dbId, condominio, semanaN);
-  if (existente) {
-    atualizarPaginaFollowUp(token, existente.id, properties);
-  } else {
-    criarPaginaFollowUp(token, dbId, properties);
-  }
-}
-
 function montarPropriedadesFollowUp(condominio, semanaN, dataInicio, dataFim, link) {
   return {
     Condominio: { title: [{ text: { content: condominio } }] },
@@ -200,34 +185,6 @@ function montarPropriedadesFollowUp(condominio, semanaN, dataInicio, dataFim, li
     "Intervalo de Semana": { date: { start: dataInicio, end: dataFim } },
     "Link do Report": { url: link },
   };
-}
-
-// Filtra por Condominio (title) + Semana (number) — mesma chave de dedup
-// usada em removerFollowUpExistente (Config.gs). Só pode haver 0 ou 1
-// resultado nessa combinação; não precisa paginar.
-function buscarPaginaFollowUpExistente(token, dbId, condominio, semanaN) {
-  const headers = { Authorization: "Bearer " + token, "Notion-Version": NOTION_VERSION };
-  const body = {
-    filter: {
-      and: [
-        { property: "Condominio", title: { equals: condominio } },
-        { property: "Semana", number: { equals: semanaN } },
-      ],
-    },
-    page_size: 2,
-  };
-  const res = UrlFetchApp.fetch("https://api.notion.com/v1/databases/" + dbId + "/query", {
-    method: "post",
-    headers: headers,
-    contentType: "application/json",
-    payload: JSON.stringify(body),
-    muteHttpExceptions: true,
-  });
-  const json = JSON.parse(res.getContentText());
-  if (json.object === "error") {
-    throw new Error("Notion API: " + (json.message || res.getContentText()));
-  }
-  return (json.results && json.results[0]) || null;
 }
 
 function criarPaginaFollowUp(token, dbId, properties) {

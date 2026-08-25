@@ -178,6 +178,7 @@ function buscarTodasPaginasComTokens(tokens, dbId) {
       return buscarTodasPaginas(tokens[i], dbId);
     } catch (err) {
       ultimoErro = err;
+      if (isErroCotaUrlFetch(err)) break; // cota é da conta inteira — outros tokens não vão ajudar
     }
   }
   throw ultimoErro;

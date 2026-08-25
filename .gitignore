@@ -20,6 +20,10 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Credenciais (Service Account do Google etc.) — nunca commitar
+*service-account*.json
+*credentials*.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

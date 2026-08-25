@@ -16,6 +16,7 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as GerenciarRouteImport } from './routes/gerenciar'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CondominioRouteImport } from './routes/$condominio'
+import { Route as WebhooksNotionRouteImport } from './routes/webhooks/notion'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -56,6 +57,11 @@ const AdminRoute = AdminRouteImport.update({
 const CondominioRoute = CondominioRouteImport.update({
   id: '/$condominio',
   path: '/$condominio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WebhooksNotionRoute = WebhooksNotionRouteImport.update({
+  id: '/webhooks/notion',
+  path: '/webhooks/notion',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthLogoutRoute = AuthLogoutRouteImport.update({
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/webhooks/notion': typeof WebhooksNotionRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
   '/auth/google/start': typeof AuthGoogleStartRoute
@@ -118,6 +125,7 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/webhooks/notion': typeof WebhooksNotionRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
   '/auth/google/start': typeof AuthGoogleStartRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/webhooks/notion': typeof WebhooksNotionRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
   '/auth/google/start': typeof AuthGoogleStartRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/auth/logout'
+    | '/webhooks/notion'
     | '/.mcp/invoke-tool/$tool'
     | '/auth/google/callback'
     | '/auth/google/start'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/auth/logout'
+    | '/webhooks/notion'
     | '/.mcp/invoke-tool/$tool'
     | '/auth/google/callback'
     | '/auth/google/start'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/auth/logout'
+    | '/webhooks/notion'
     | '/.mcp/invoke-tool/$tool'
     | '/auth/google/callback'
     | '/auth/google/start'
@@ -197,6 +209,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
+  WebhooksNotionRoute: typeof WebhooksNotionRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   AuthGoogleCallbackRoute: typeof AuthGoogleCallbackRoute
   AuthGoogleStartRoute: typeof AuthGoogleStartRoute
@@ -251,6 +264,13 @@ declare module '@tanstack/react-router' {
       path: '/$condominio'
       fullPath: '/$condominio'
       preLoaderRoute: typeof CondominioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/webhooks/notion': {
+      id: '/webhooks/notion'
+      path: '/webhooks/notion'
+      fullPath: '/webhooks/notion'
+      preLoaderRoute: typeof WebhooksNotionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/logout': {
@@ -310,6 +330,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AuthLogoutRoute: AuthLogoutRoute,
+  WebhooksNotionRoute: WebhooksNotionRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   AuthGoogleCallbackRoute: AuthGoogleCallbackRoute,
   AuthGoogleStartRoute: AuthGoogleStartRoute,

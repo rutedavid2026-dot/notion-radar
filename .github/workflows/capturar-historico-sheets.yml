@@ -1,0 +1,22 @@
+name: Capturar histórico semanal (Notion -> Sheets)
+
+on:
+  schedule:
+    # Toda sexta às 11:00 UTC (8h no horário de Brasília) — mesmo horário que
+    # o trigger do Apps Script (capturarTodasFotografias) já usava.
+    - cron: "0 11 * * 5"
+  workflow_dispatch: {}
+
+jobs:
+  capturar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/capturar-historico-sheets.mjs
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_API_KEY_2: ${{ secrets.NOTION_API_KEY_2 }}

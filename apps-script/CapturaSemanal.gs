@@ -31,7 +31,24 @@ function getNotionTokens(props) {
     });
 }
 
+// Cota diária de UrlFetchApp (20 mil chamadas/dia numa conta Google free) é
+// da CONTA inteira, não de um token específico — diferente do
+// "object_not_found" (que pode ser só aquele token sem acesso), tentar os
+// outros 2 tokens depois desse erro está sempre fadado a falhar de novo,
+// só triplicando o tempo perdido. Detectado em produção em 2026-08-24: toda
+// a captura estourava o limite de 6 minutos do Apps Script porque cada
+// condomínio ficava ~28s tentando os 3 tokens à toa após a cota estourar.
+function isErroCotaUrlFetch(err) {
+  return /too many times for one day/i.test((err && err.message) || "");
+}
+
 function capturarTodasFotografias() {
+  // Instrumentação: o script vinha estourando o limite de 6 minutos do Apps
+  // Script mesmo depois de otimizar o espelhamento pro Notion, sem log
+  // nenhum indicando onde o tempo estava indo. Estes Logger.log por
+  // condomínio/etapa são só diagnóstico — rodar de novo e olhar o
+  // Execution log mostra exatamente qual trecho é o gargalo real.
+  const inicioExec = Date.now();
   const props = PropertiesService.getScriptProperties();
   const tokens = getNotionTokens(props);
   if (tokens.length === 0) {
@@ -52,19 +69,38 @@ function capturarTodasFotografias() {
   const semana = semanaAtual();
   const followupSheet = getOrCreateFollowupSheet(ss);
 
-  linhas.forEach(function (row) {
+  // Descobre o token válido e busca o mapa de páginas já existentes na
+  // database "Relatórios Semanais" UMA vez, fora do loop — antes, cada
+  // condomínio repetia essa consulta (buscarPaginaFollowUpExistente + testar
+  // até 3 tokens), o que já foi identificado como o motivo de
+  // capturarTodasFotografias estourar o limite de 6 minutos do Apps Script
+  // (ver NotionFollowups.gs). Falha aqui não derruba a captura das
+  // demandas — só desliga o espelhamento pro Notion nesta execução.
+  let followUpToken = null;
+  let followUpExistentes = {};
+  try {
+    followUpToken = encontrarTokenFollowUpsNotion(tokens);
+    followUpExistentes = buscarTodasPaginasFollowUpNotion(followUpToken);
+  } catch (err) {
+    erros.push("Espelho Notion Relatórios Semanais (setup): " + err.message);
+  }
+
+  let cotaEstourou = false;
+
+  for (let idx = 0; idx < linhas.length; idx++) {
+    const row = linhas[idx];
     const condominio = String(row[0] || "").trim();
     const url = String(row[1] || "").trim();
     const gid = row[2];
-    if (!condominio || !url || !gid) return; // condomínio ainda não configurado
+    if (!condominio || !url || !gid) continue; // condomínio ainda não configurado
 
     const dbId = extrairDatabaseId(url);
-    if (!dbId) return;
+    if (!dbId) continue;
 
     const sheet = getSheetByGid(ss, gid);
     if (!sheet) {
       erros.push(condominio + ": aba (gid " + gid + ") não encontrada.");
-      return;
+      continue;
     }
 
     // Usa o id já salvo na Configuração (coluna D); linhas antigas sem essa
@@ -72,26 +108,50 @@ function capturarTodasFotografias() {
     // configurarColunaId() (Config.gs).
     const id = String(row[COL_ID - 1] || "").trim() || slugifyCondominio(condominio);
 
+    const inicioCondominio = Date.now();
+    let totalDemandas = 0;
     try {
-      capturarFotografiaCondominio(ss, sheet, tokens, dbId, condominio);
+      totalDemandas = capturarFotografiaCondominio(ss, sheet, tokens, dbId, condominio);
       registrarFollowUpSemana(followupSheet, condominio, id, semana);
     } catch (err) {
       erros.push(condominio + ": " + err.message);
-      return;
+      Logger.log(condominio + ": falhou após " + (Date.now() - inicioCondominio) + "ms — " + err.message);
+      // Cota de UrlFetchApp esgotada afeta a conta inteira — todo condomínio
+      // restante vai falhar do mesmo jeito, então aborta o loop em vez de
+      // gastar mais ~28s por condomínio só pra confirmar a mesma falha.
+      if (isErroCotaUrlFetch(err)) {
+        cotaEstourou = true;
+        erros.push(
+          "Cota diária do UrlFetchApp esgotada — abortando os condomínios restantes. Tentar de novo depois que a cota resetar (meia-noite no fuso do Google, horário do Pacífico).",
+        );
+        break;
+      }
+      continue;
     }
+    Logger.log(condominio + ": " + totalDemandas + " demanda(s) em " + (Date.now() - inicioCondominio) + "ms");
 
-    try {
-      sincronizarFollowUpComTokens(tokens, NOTION_FOLLOWUPS_DB_ID, condominio, id, semana);
-    } catch (err) {
-      erros.push(condominio + " (espelho Notion Relatórios Semanais): " + err.message);
+    if (followUpToken) {
+      const inicioMirror = Date.now();
+      try {
+        sincronizarFollowUpComMapa(followUpToken, followUpExistentes, NOTION_FOLLOWUPS_DB_ID, condominio, id, semana);
+        Logger.log(condominio + " (espelho Notion): " + (Date.now() - inicioMirror) + "ms");
+      } catch (err) {
+        erros.push(condominio + " (espelho Notion Relatórios Semanais): " + err.message);
+      }
     }
-  });
-
-  try {
-    capturarOutrosFollowUps(ss, tokens);
-  } catch (err) {
-    erros.push("Outros Follow-ups: " + err.message);
   }
+
+  const inicioOutros = Date.now();
+  if (!cotaEstourou) {
+    try {
+      capturarOutrosFollowUps(ss, tokens);
+      Logger.log("Outros Follow-ups: " + (Date.now() - inicioOutros) + "ms");
+    } catch (err) {
+      erros.push("Outros Follow-ups: " + err.message);
+    }
+  }
+
+  Logger.log("Tempo total da execução: " + (Date.now() - inicioExec) + "ms");
 
   if (erros.length > 0) {
     Logger.log("Falhas na captura semanal:\n" + erros.join("\n"));
@@ -157,6 +217,7 @@ function capturarFotografiaCondominio(ss, sheet, tokens, dbId, condominio) {
   if (rows.length > 0) {
     sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
   }
+  return demandas.length;
 }
 
 // Calcula a semana em curso a partir da data de HOJE no fuso
@@ -199,9 +260,14 @@ function buscarDemandasComTokens(tokens, databaseId, condominioOverride) {
   let ultimoErro = null;
   for (let i = 0; i < tokens.length; i++) {
     try {
-      return buscarDemandas(tokens[i], databaseId, condominioOverride);
+      const resultado = buscarDemandas(tokens[i], databaseId, condominioOverride);
+      if (i > 0) {
+        Logger.log(condominioOverride + ": token #" + (i + 1) + " funcionou (os anteriores falharam).");
+      }
+      return resultado;
     } catch (err) {
       ultimoErro = err;
+      if (isErroCotaUrlFetch(err)) break; // cota é da conta inteira — outros tokens não vão ajudar
     }
   }
   throw ultimoErro;
