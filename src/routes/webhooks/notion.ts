@@ -35,8 +35,14 @@ import { createFileRoute } from "@tanstack/react-router";
 const GH_REPO_DEFAULT = "rutedavid2026-dot/notion-radar";
 const GH_WORKFLOW_FILE = "capturar-historico-sheets.yml";
 const SPREADSHEET_ID_DEFAULT = "1fEkPgTf6oGYknWEP6zzi8eyBTpoDDQR0goJg1D_Wed0";
-const CELULA_VERIFICATION_TOKEN = "'_configuracao'!F1";
-const CELULA_ULTIMO_DISPARO = "'_configuracao'!F2";
+// Aba própria em vez de colunas extras em '_configuracao' — essa aba tem
+// grid fixo de 4 colunas (A-D) usado pelo Apps Script; escrever fora disso
+// (ex.: coluna F) dá erro "exceeds grid limits" da Sheets API (confirmado em
+// 2026-08-24: a escrita falhava silenciosamente, o handler não checava o
+// erro da resposta).
+const WEBHOOK_SHEET_NAME = "_webhook";
+const CELULA_VERIFICATION_TOKEN = `'${WEBHOOK_SHEET_NAME}'!A1`;
+const CELULA_ULTIMO_DISPARO = `'${WEBHOOK_SHEET_NAME}'!A2`;
 
 // Síndica editando várias linhas em sequência dispara um evento por edição —
 // sem debounce, cada uma dispara uma captura completa (29 condomínios) em
@@ -115,12 +121,27 @@ async function lerCelula(token: string, spreadsheetId: string, celula: string): 
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(celula)}`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
+  if (!res.ok) return null; // aba ainda não existe (primeira vez) — trata como "sem valor"
   const json = (await res.json()) as { values?: string[][] };
   return json.values?.[0]?.[0] ?? null;
 }
 
+// Cria a aba "_webhook" se ainda não existir — idempotente (a API retorna
+// erro se o nome já existir, e a gente simplesmente ignora esse erro).
+async function garantirAbaWebhook(token: string, spreadsheetId: string): Promise<void> {
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ requests: [{ addSheet: { properties: { title: WEBHOOK_SHEET_NAME } } }] }),
+  });
+  // Sem checar o resultado de propósito: se a aba já existe, a API retorna
+  // 400 ("already exists") — é o caso normal em toda chamada depois da
+  // primeira, não é uma falha real.
+}
+
 async function escreverCelula(token: string, spreadsheetId: string, celula: string, valor: string): Promise<void> {
-  await fetch(
+  await garantirAbaWebhook(token, spreadsheetId);
+  const res = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(celula)}?valueInputOption=RAW`,
     {
       method: "PUT",
@@ -128,6 +149,10 @@ async function escreverCelula(token: string, spreadsheetId: string, celula: stri
       body: JSON.stringify({ values: [[valor]] }),
     },
   );
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Sheets API (escreverCelula ${celula}): ${res.status} ${detail}`);
+  }
 }
 
 // ---------- Assinatura do Notion (HMAC-SHA256, header x-notion-signature) ----------
@@ -225,9 +250,19 @@ export const Route = createFileRoute("/webhooks/notion")({
         // assinatura na UI da Notion) — não tem assinatura ainda nesse ponto.
         if (typeof json.verification_token === "string") {
           console.log("Notion webhook verification_token:", json.verification_token);
-          if (serviceAccount) {
+          if (!serviceAccount) {
+            return new Response("ok (aviso: GOOGLE_SERVICE_ACCOUNT_KEY não configurado, token não gravado)", {
+              status: 200,
+            });
+          }
+          try {
             const sheetsToken = await getAccessToken(serviceAccount);
             await escreverCelula(sheetsToken, spreadsheetId, CELULA_VERIFICATION_TOKEN, json.verification_token);
+          } catch (err) {
+            console.error("Notion webhook: falha ao gravar verification_token na planilha:", err);
+            return new Response(`ok (aviso: falha ao gravar na planilha — ${(err as Error).message})`, {
+              status: 200,
+            });
           }
           return new Response("ok", { status: 200 });
         }
