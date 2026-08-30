@@ -15,6 +15,18 @@ on:
 jobs:
   capturar:
     runs-on: ubuntu-latest
+    # Fila por condomínio (ou "todos", pro cron/disparo sem filtro): se uma
+    # edição nova chegar enquanto a captura anterior do MESMO condomínio
+    # ainda está rodando, cancela a antiga e assume o lugar — a mais nova
+    # sempre busca o estado atual completo do Notion, então nada se perde.
+    # Isso troca o antigo debounce "descarta se recente" (que perdia
+    # atualização quando a síndica editava de novo dentro da janela) por uma
+    # fila que sempre converge pro estado mais recente, sem depender de uma
+    # nova edição pra "destravar". Condomínios diferentes têm grupos
+    # diferentes — rodam em paralelo, sem se bloquear.
+    concurrency:
+      group: capturar-${{ github.event.inputs.condominio || 'todos' }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

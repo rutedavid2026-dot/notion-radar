@@ -7,13 +7,20 @@ import { createFileRoute } from "@tanstack/react-router";
 // que já faz a captura completa (scripts/capturar-historico-sheets.mjs),
 // pra não duplicar a lógica de sincronização aqui.
 //
-// Por que grava estado na planilha em vez de guardar em memória: rodando em
-// edge/serverless (Cloudflare via Nitro), cada requisição pode cair numa
-// instância/isolate diferente — confirmado na prática em 2026-08-24, o GET
-// logo depois do POST de verificação não via o token guardado em memória.
-// A célula '_configuracao'!F1 (token de verificação) e F2 (timestamp do
-// último disparo, pro debounce) viram a fonte de verdade, com o mesmo
-// Service Account já usado por scripts/capturar-historico-sheets.mjs.
+// Por que grava o verification_token na planilha em vez de guardar em
+// memória: rodando em edge/serverless (Cloudflare via Nitro), cada
+// requisição pode cair numa instância/isolate diferente — confirmado na
+// prática em 2026-08-24, o GET logo depois do POST de verificação não via o
+// token guardado em memória. A aba "_webhook" (célula A1) vira a fonte de
+// verdade, com o mesmo Service Account já usado por
+// scripts/capturar-historico-sheets.mjs.
+//
+// Não existe debounce aqui — todo evento dispara na hora. Coalescer edições
+// em rajada é responsabilidade da `concurrency` do workflow do GitHub
+// Actions (ver .github/workflows/capturar-historico-sheets.yml): uma
+// captura nova do mesmo condomínio cancela a anterior ainda em andamento
+// (2026-08-30, depois de um debounce por timestamp ter descartado edições
+// de verdade em vez de só coalescer rajadas).
 //
 // Setup (ver instruções passadas no chat):
 //   1. notion.so/my-integrations -> sua integração -> aba "Webhooks" ->
@@ -48,22 +55,6 @@ const PLANO_ACAO_VIVENDAS_ID = "vivendas-plano-de-acao";
 // erro da resposta).
 const WEBHOOK_SHEET_NAME = "_webhook";
 const CELULA_VERIFICATION_TOKEN = `'${WEBHOOK_SHEET_NAME}'!A1`;
-// Tabela de debounce por condomínio (linha 2 em diante): coluna A = chave
-// (slug do condomínio, ou "*" pra disparo sem filtro), coluna B = timestamp
-// do último disparo. Precisa ser por chave, não uma célula única — senão um
-// evento do condomínio A bloquearia por 2 min a captura do condomínio B
-// (debounce global não faz sentido depois que a captura passou a ser
-// seletiva).
-const RANGE_DEBOUNCE = `'${WEBHOOK_SHEET_NAME}'!A2:B`;
-const CHAVE_DEBOUNCE_TODOS = "*";
-
-// Síndica editando várias linhas em sequência dispara um evento por edição —
-// sem debounce, cada uma dispara uma captura completa em paralelo,
-// arriscando estourar a cota de escrita do Sheets API de novo (ver histórico
-// do projeto, 2026-08-24). Só permite 1 disparo a cada 2 minutos por
-// condomínio; eventos dentro da janela são ignorados (a próxima captura já
-// pega a mudança).
-const JANELA_DEBOUNCE_MS = 2 * 60 * 1000;
 
 // Versão da API do Notion que suporta o objeto "data_source" (modelo mais
 // novo de databases com múltiplas fontes de dados) — diferente da versão
@@ -175,42 +166,6 @@ async function escreverCelula(token: string, spreadsheetId: string, celula: stri
   }
 }
 
-async function lerTabelaDebounce(token: string, spreadsheetId: string): Promise<string[][]> {
-  const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(RANGE_DEBOUNCE)}`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
-  if (!res.ok) return []; // aba ainda não existe — trata como tabela vazia
-  const json = (await res.json()) as { values?: string[][] };
-  return json.values ?? [];
-}
-
-async function lerUltimoDisparo(token: string, spreadsheetId: string, chave: string): Promise<number> {
-  const linhas = await lerTabelaDebounce(token, spreadsheetId);
-  const linha = linhas.find((r) => r[0] === chave);
-  return linha ? Number(linha[1]) || 0 : 0;
-}
-
-async function escreverUltimoDisparo(token: string, spreadsheetId: string, chave: string, timestamp: number): Promise<void> {
-  await garantirAbaWebhook(token, spreadsheetId);
-  const linhas = await lerTabelaDebounce(token, spreadsheetId);
-  const idx = linhas.findIndex((r) => r[0] === chave);
-  const numeroLinha = idx === -1 ? linhas.length + 2 : idx + 2; // dados começam na linha 2
-  const celula = `'${WEBHOOK_SHEET_NAME}'!A${numeroLinha}:B${numeroLinha}`;
-  const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(celula)}?valueInputOption=RAW`,
-    {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ values: [[chave, String(timestamp)]] }),
-    },
-  );
-  if (!res.ok) {
-    const detail = await res.text();
-    throw new Error(`Sheets API (escreverUltimoDisparo ${chave}): ${res.status} ${detail}`);
-  }
-}
-
 // ---------- Resolução do condomínio a partir do evento da Notion ----------
 
 function getNotionTokens(): string[] {
@@ -299,19 +254,15 @@ async function verificarAssinatura(rawBody: string, assinaturaRecebida: string |
   return diff === 0;
 }
 
-async function dispararCaptura(
-  spreadsheetId: string,
-  sheetsToken: string | null,
-  condominioSlug: string | null,
-): Promise<{ disparado: boolean; motivo: string }> {
-  const chaveDebounce = condominioSlug || CHAVE_DEBOUNCE_TODOS;
-  if (sheetsToken) {
-    const ultimoDisparoEm = await lerUltimoDisparo(sheetsToken, spreadsheetId, chaveDebounce);
-    if (Date.now() - ultimoDisparoEm < JANELA_DEBOUNCE_MS) {
-      return { disparado: false, motivo: `debounce ('${chaveDebounce}': evento recente, próxima captura já cobre)` };
-    }
-  }
-
+// Dispara sempre, sem debounce que descarta — a fila de verdade é a
+// `concurrency` do workflow do GitHub Actions (ver
+// .github/workflows/capturar-historico-sheets.yml): uma edição nova no MESMO
+// condomínio cancela a captura anterior ainda em andamento e assume o lugar,
+// em vez de simplesmente ignorar o evento por estar "muito recente". Isso
+// garante que toda edição real eventualmente resulta numa atualização, sem
+// depender de uma edição seguinte pra "destravar" (era o problema do
+// debounce anterior, que descartava eventos dentro de uma janela fixa).
+async function dispararCaptura(condominioSlug: string | null): Promise<{ disparado: boolean; motivo: string }> {
   const token = process.env.GH_WORKFLOW_TOKEN;
   if (!token) {
     return { disparado: false, motivo: "GH_WORKFLOW_TOKEN não configurado" };
@@ -335,9 +286,6 @@ async function dispararCaptura(
   if (!res.ok) {
     const detail = await res.text();
     return { disparado: false, motivo: `GitHub API: ${res.status} ${detail}` };
-  }
-  if (sheetsToken) {
-    await escreverUltimoDisparo(sheetsToken, spreadsheetId, chaveDebounce, Date.now());
   }
   return {
     disparado: true,
@@ -435,7 +383,7 @@ export const Route = createFileRoute("/webhooks/notion")({
           }
         }
 
-        const resultado = await dispararCaptura(spreadsheetId, sheetsToken, condominioSlug);
+        const resultado = await dispararCaptura(condominioSlug);
         console.log("Notion webhook: evento recebido —", resultado.motivo);
         return new Response(JSON.stringify(resultado), {
           status: 200,
