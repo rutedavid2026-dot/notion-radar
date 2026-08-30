@@ -368,7 +368,21 @@ export const Route = createFileRoute("/webhooks/notion")({
         if (sheetsToken) {
           try {
             const entity = json.entity as { id?: string; type?: string } | undefined;
-            const databaseId = await resolverDatabaseId(entity);
+            const data = json.data as { parent?: { id?: string; type?: string } } | undefined;
+
+            // Edição de uma LINHA (a Notion trata cada linha de database como
+            // uma "page") já traz o database_id direto em data.parent.id —
+            // confirmado inspecionando um evento real de page.created em
+            // 2026-08-30 (o database_id não vinha no `entity`, só em
+            // `data.parent`, por isso toda edição de linha caía pra captura
+            // completa antes desta correção). Só cai pra resolverDatabaseId
+            // (que faz uma chamada extra à API do Notion) quando o evento é
+            // sobre a própria database/fonte de dados, não uma linha dela.
+            const databaseId =
+              entity?.type === "page" && data?.parent?.type === "database" && data.parent.id
+                ? data.parent.id
+                : await resolverDatabaseId(entity);
+
             if (databaseId) {
               condominioSlug =
                 databaseId.replace(/-/g, "").toLowerCase() === PLANO_ACAO_VIVENDAS_DB_ID.toLowerCase()
@@ -377,15 +391,6 @@ export const Route = createFileRoute("/webhooks/notion")({
             }
             if (entity && !condominioSlug) {
               console.log(`Notion webhook: não resolveu condomínio pra entity ${JSON.stringify(entity)} — captura completa.`);
-              // Diagnóstico temporário (2026-08-30): grava o payload bruto do
-              // evento não resolvido, pra inspecionar o formato real (a doc
-              // da Notion não mostra o exemplo completo de payload de
-              // page.properties_updated) — remover depois de confirmar.
-              try {
-                await escreverCelula(sheetsToken, spreadsheetId, `'${WEBHOOK_SHEET_NAME}'!B1`, rawBody.slice(0, 2000));
-              } catch {
-                // não deixa o diagnóstico quebrar o fluxo principal
-              }
             }
           } catch (err) {
             console.warn("Notion webhook: falha ao resolver condomínio do evento, seguindo com captura completa:", err);
