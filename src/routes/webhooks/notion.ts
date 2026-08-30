@@ -150,6 +150,35 @@ async function garantirAbaWebhook(token: string, spreadsheetId: string): Promise
   // primeira, não é uma falha real.
 }
 
+// Log de diagnóstico (append-only, 1 linha por evento recebido) — criado
+// pra investigar uma resolução errada observada em 2026-08-30 (edição no
+// Thai Beach resultou em captura do Absoluto). Diferente do diagnóstico
+// anterior (célula única, sobrescrita a cada evento — só dava pra ver o
+// último), este acumula histórico pra correlacionar rajadas de eventos.
+const DIAGNOSTICO_SHEET_NAME = "_webhook_log";
+
+async function garantirAbaDiagnostico(token: string, spreadsheetId: string): Promise<void> {
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ requests: [{ addSheet: { properties: { title: DIAGNOSTICO_SHEET_NAME } } }] }),
+  });
+  // Erro "already exists" é o caso normal depois da primeira chamada —
+  // mesmo padrão de garantirAbaWebhook, sem checar de propósito.
+}
+
+async function registrarDiagnostico(token: string, spreadsheetId: string, linha: (string | number)[]): Promise<void> {
+  await garantirAbaDiagnostico(token, spreadsheetId);
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(`'${DIAGNOSTICO_SHEET_NAME}'!A1:H`)}:append?valueInputOption=RAW`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [linha] }),
+    },
+  );
+}
+
 async function escreverCelula(token: string, spreadsheetId: string, celula: string, valor: string): Promise<void> {
   await garantirAbaWebhook(token, spreadsheetId);
   const res = await fetch(
@@ -391,6 +420,24 @@ export const Route = createFileRoute("/webhooks/notion")({
             }
             if (entity && !condominioSlug) {
               console.log(`Notion webhook: não resolveu condomínio pra entity ${JSON.stringify(entity)} — captura completa.`);
+            }
+
+            // Diagnóstico temporário (2026-08-30) — 1 linha por evento, pra
+            // correlacionar rajadas e conferir se o database_id resolvido
+            // bate com o condomínio esperado. Remover depois de confirmar.
+            try {
+              await registrarDiagnostico(sheetsToken, spreadsheetId, [
+                new Date().toISOString(),
+                String(json.type ?? ""),
+                entity?.type ?? "",
+                entity?.id ?? "",
+                data?.parent?.type ?? "",
+                data?.parent?.id ?? "",
+                databaseId ?? "",
+                condominioSlug ?? "",
+              ]);
+            } catch {
+              // não deixa o diagnóstico quebrar o fluxo principal
             }
           } catch (err) {
             console.warn("Notion webhook: falha ao resolver condomínio do evento, seguindo com captura completa:", err);
