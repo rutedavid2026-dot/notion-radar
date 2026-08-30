@@ -39,7 +39,7 @@ import { createFileRoute } from "@tanstack/react-router";
 //      opcionalmente, GH_REPO (formato "dono/repo"; default já aponta pro
 //      repo atual).
 
-const GH_REPO_DEFAULT = "rutedavid2026-dot/notion-radar";
+const GH_REPO_DEFAULT = "rutedavid2026-dot/equipe-sindicas";
 const GH_WORKFLOW_FILE = "capturar-historico-sheets.yml";
 const SPREADSHEET_ID_DEFAULT = "1fEkPgTf6oGYknWEP6zzi8eyBTpoDDQR0goJg1D_Wed0";
 // Plano de Ação Vivendas não vive na planilha de configuração (não é um
