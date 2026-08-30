@@ -35,6 +35,12 @@ import { createFileRoute } from "@tanstack/react-router";
 const GH_REPO_DEFAULT = "rutedavid2026-dot/notion-radar";
 const GH_WORKFLOW_FILE = "capturar-historico-sheets.yml";
 const SPREADSHEET_ID_DEFAULT = "1fEkPgTf6oGYknWEP6zzi8eyBTpoDDQR0goJg1D_Wed0";
+// Plano de Ação Vivendas não vive na planilha de configuração (não é um
+// condomínio "normal") — tratado como um pseudo-condomínio com esse slug,
+// reconhecido pelo database_id fixo (mesmo ID de
+// apps-script/OutrosFollowUps.gs e scripts/capturar-historico-sheets.mjs).
+const PLANO_ACAO_VIVENDAS_DB_ID = "3c2e69ba114f80cb9c62f1a0843dcf73";
+const PLANO_ACAO_VIVENDAS_ID = "vivendas-plano-de-acao";
 // Aba própria em vez de colunas extras em '_configuracao' — essa aba tem
 // grid fixo de 4 colunas (A-D) usado pelo Apps Script; escrever fora disso
 // (ex.: coluna F) dá erro "exceeds grid limits" da Sheets API (confirmado em
@@ -416,7 +422,10 @@ export const Route = createFileRoute("/webhooks/notion")({
             const entity = json.entity as { id?: string; type?: string } | undefined;
             const databaseId = await resolverDatabaseId(entity);
             if (databaseId) {
-              condominioSlug = await encontrarSlugPorDatabaseId(sheetsToken, spreadsheetId, databaseId);
+              condominioSlug =
+                databaseId.replace(/-/g, "").toLowerCase() === PLANO_ACAO_VIVENDAS_DB_ID.toLowerCase()
+                  ? PLANO_ACAO_VIVENDAS_ID
+                  : await encontrarSlugPorDatabaseId(sheetsToken, spreadsheetId, databaseId);
             }
             if (entity && !condominioSlug) {
               console.log(`Notion webhook: não resolveu condomínio pra entity ${JSON.stringify(entity)} — captura completa.`);

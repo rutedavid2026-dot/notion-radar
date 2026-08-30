@@ -31,8 +31,10 @@
 //
 // Escopo: captura de demandas por condomínio (aba de histórico) + registro/
 // espelho em "Follow-up da semana" e na database Notion "Relatórios
-// Semanais". NÃO inclui "Outros Follow-ups" (Plano de Ação Vivendas) — isso
-// continua só na captura semanal via Apps Script.
+// Semanais", além do Plano de Ação Vivendas (aba "Vivendas - Plano de Ação"
+// + registro em "Outros Follow-ups") — tratado como um pseudo-condomínio
+// (CONDOMINIO_FILTRO="vivendas-plano-de-acao") pra reaproveitar o mesmo
+// mecanismo de captura seletiva via webhook.
 
 import { readFileSync } from "node:fs";
 import { createSign } from "node:crypto";
@@ -46,6 +48,46 @@ const NOTION_VERSION = "2022-06-28";
 const WEEK_ANCHOR = "2025-12-27";
 const BASE_URL = "https://equipesindicas.lovable.app";
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
+
+// "Outros Follow-ups": relatórios de acompanhamento que não são o follow-up
+// semanal padrão de demandas de um condomínio — hoje só o Plano de Ação da
+// Vivendas (schema bem diferente das databases de demandas normais). Tratado
+// como um pseudo-condomínio (CONDOMINIO_FILTRO="vivendas-plano-de-acao")
+// pra reaproveitar o mesmo mecanismo de captura seletiva via webhook, em vez
+// de duplicar a lógica de filtro. Ver apps-script/OutrosFollowUps.gs (versão
+// original, Apps Script).
+const PLANO_ACAO_VIVENDAS_DB_ID = "3c2e69ba114f80cb9c62f1a0843dcf73";
+const PLANO_ACAO_VIVENDAS_SHEET_NAME = "Vivendas - Plano de Ação";
+const PLANO_ACAO_VIVENDAS_ID = "vivendas-plano-de-acao";
+const PLANO_ACAO_VIVENDAS_NOME = "Vivendas - Plano de Ação";
+const OUTROS_FOLLOWUPS_SHEET_NAME = "Outros Follow-ups";
+const HEADERS_OUTROS_FOLLOWUP = ["nome", "semana", "link-follow-up", "data-inicio", "data-termino"];
+
+const HEADERS_PLANO_ACAO = [
+  "SemanaN",
+  "SemanaInicio",
+  "SemanaFim",
+  "CapturadoEm",
+  "Acao",
+  "Status",
+  "Prioridade",
+  "Categoria",
+  "Area",
+  "ResponsavelSugerido",
+  "PrazoPrimeiraProvidencia",
+  "PrazoConclusao",
+  "AcaoRecomendada",
+  "Risco",
+  "Origem",
+  "ReferenciaRelatorio",
+  "TipoDeAcao",
+  "ApontamentoOriginal",
+  "GarantiaFastBuilt",
+  "Paginas",
+  "PageId",
+  "URL",
+  "DataUltimaEdicao",
+];
 
 const HEADERS_HISTORICO = [
   "SemanaN",
@@ -191,6 +233,30 @@ function valorParaIso(valor) {
   if (valor == null || valor === "") return null;
   if (typeof valor === "number") return serialToIsoDate(valor);
   return String(valor).slice(0, 10);
+}
+
+// Garante que uma aba com esse título existe (cria se faltar) e tem
+// cabeçalho na primeira linha — usado pras abas fixas "Vivendas - Plano de
+// Ação" e "Outros Follow-ups", que não vivem no registro de condomínios
+// (achadas por título, não por gid). `meta.sheets` é atualizado in-place
+// quando uma aba nova é criada, pra tituloPorGid/outras chamadas na mesma
+// execução já enxergarem ela.
+async function garantirAbaComCabecalho(token, meta, titulo, headers) {
+  let sheet = meta.sheets.find((s) => s.properties.title === titulo);
+  if (!sheet) {
+    await sheetsFetch(token, `${SPREADSHEET_ID}:batchUpdate`, {
+      method: "POST",
+      body: JSON.stringify({ requests: [{ addSheet: { properties: { title: titulo } } }] }),
+    });
+    const novaMeta = await getSpreadsheetMeta(token);
+    sheet = novaMeta.sheets.find((s) => s.properties.title === titulo);
+    meta.sheets.push(sheet);
+  }
+  const primeiraLinha = await getValues(token, `'${titulo}'!A1:A1`);
+  if (primeiraLinha.length === 0) {
+    await appendValues(token, `'${titulo}'!A1:${String.fromCharCode(64 + headers.length)}`, [headers]);
+  }
+  return sheet;
 }
 
 // Remove da aba as linhas cuja coluna B (SemanaInicio) bate com a semana
@@ -346,6 +412,112 @@ function mapPage(page, condominioOverride) {
       dateValue(p["Concluído em"]) || dateValue(p["Data de conclusão"]) || dateValue(p["Data de Conclusão"]) || "",
     situacaoPrazo: formulaValue(p["Situação do Prazo"]) || richText(p["Situação do Prazo"]) || "",
   };
+}
+
+// ---------- Plano de Ação Vivendas ("Outros Follow-ups") — schema próprio,
+// bem diferente das databases de demandas normais. Ver mapPagePlanoDeAcao em
+// apps-script/OutrosFollowUps.gs (mesma lógica, portada aqui). ----------
+
+function urlValue(prop) {
+  return prop?.url || "";
+}
+
+function mapPagePlanoDeAcao(page) {
+  const p = page.properties || {};
+  return {
+    acao: richText(p["Ação"]),
+    status: statusValue(p["Status"]) || "",
+    prioridade: prioridadeValue(p["Prioridade"]) || "",
+    categoria: multiSelectJoined(p["Categoria"]),
+    area: multiSelectJoined(p["Área"]),
+    responsavelSugerido: multiSelectJoined(p["Responsável sugerido"]),
+    prazoPrimeiraProvidencia: dateValue(p["Prazo - primeira providência"]) || "",
+    prazoConclusao: dateValue(p["Prazo - conclusão"]) || "",
+    acaoRecomendada: richText(p["Ação recomendada"]),
+    risco: richText(p["Risco"]),
+    origem: selectName(p["Origem"]),
+    referenciaRelatorio: richText(p["Referência no relatório"]),
+    tipoDeAcao: selectName(p["Tipo de ação"]),
+    apontamentoOriginal: richText(p["Apontamento original"]),
+    garantiaFastBuilt: urlValue(p["Garantia / FastBuilt"]),
+    paginas: richText(p["Página(s)"]),
+    id: page.id,
+    url: page.url,
+    dataUltimaEdicao: page.last_edited_time,
+  };
+}
+
+async function buscarPaginasComTokens(tokens, databaseId) {
+  let ultimoErro = null;
+  for (const token of tokens) {
+    try {
+      return await notionQuery(token, databaseId);
+    } catch (err) {
+      ultimoErro = err;
+    }
+  }
+  throw ultimoErro;
+}
+
+// Espelha capturarPlanoDeAcaoVivendas (apps-script/OutrosFollowUps.gs):
+// grava o snapshot da semana na aba própria + registra o link em "Outros
+// Follow-ups" (dedup por nome+semana, mesmo padrão de "Follow-up da
+// semana").
+async function capturarPlanoDeAcaoVivendas(token, meta, notionTokens, semana) {
+  await garantirAbaComCabecalho(token, meta, PLANO_ACAO_VIVENDAS_SHEET_NAME, HEADERS_PLANO_ACAO);
+  const outrosSheet = await garantirAbaComCabecalho(token, meta, OUTROS_FOLLOWUPS_SHEET_NAME, HEADERS_OUTROS_FOLLOWUP);
+
+  const paginas = await buscarPaginasComTokens(notionTokens, PLANO_ACAO_VIVENDAS_DB_ID);
+  const capturadoEm = new Date().toISOString();
+
+  const rows = paginas.map((page) => {
+    const d = mapPagePlanoDeAcao(page);
+    return [
+      semana.n,
+      semana.start,
+      semana.end,
+      capturadoEm,
+      d.acao,
+      d.status,
+      d.prioridade,
+      d.categoria,
+      d.area,
+      d.responsavelSugerido,
+      d.prazoPrimeiraProvidencia,
+      d.prazoConclusao,
+      d.acaoRecomendada,
+      d.risco,
+      d.origem,
+      d.referenciaRelatorio,
+      d.tipoDeAcao,
+      d.apontamentoOriginal,
+      d.garantiaFastBuilt,
+      d.paginas,
+      d.id,
+      d.url,
+      d.dataUltimaEdicao,
+    ];
+  });
+
+  const sheetPlanoAcao = meta.sheets.find((s) => s.properties.title === PLANO_ACAO_VIVENDAS_SHEET_NAME);
+  await removerSemanaExistente(token, sheetPlanoAcao.properties.sheetId, PLANO_ACAO_VIVENDAS_SHEET_NAME, semana.start);
+  await appendValues(
+    token,
+    `'${PLANO_ACAO_VIVENDAS_SHEET_NAME}'!A1:${String.fromCharCode(64 + HEADERS_PLANO_ACAO.length)}`,
+    rows,
+  );
+  console.log(`  ✅ ${rows.length} item(ns) do Plano de Ação gravado(s) em '${PLANO_ACAO_VIVENDAS_SHEET_NAME}'.`);
+
+  const link = montarLinkFollowUp(PLANO_ACAO_VIVENDAS_ID, semana.start, semana.end);
+  const outrosColAB = await getValues(token, `'${OUTROS_FOLLOWUPS_SHEET_NAME}'!A2:B`, "UNFORMATTED_VALUE");
+  const indices = [];
+  outrosColAB.forEach((r, i) => {
+    if (String(r[0] || "") === PLANO_ACAO_VIVENDAS_NOME && Number(r[1]) === semana.n) indices.push(i + 1);
+  });
+  await deleteRows(token, outrosSheet.properties.sheetId, indices);
+  await appendValues(token, `'${OUTROS_FOLLOWUPS_SHEET_NAME}'!A1:E`, [
+    [PLANO_ACAO_VIVENDAS_NOME, semana.n, link, semana.start, semana.end],
+  ]);
 }
 
 // ---------- Semana / links (mesmo cálculo de CapturaSemanal.gs/Config.gs) ----------
@@ -554,7 +726,21 @@ async function main() {
     }
   }
 
-  console.log(`\n✅ ${processados} condomínio(s) processado(s).`);
+  // Plano de Ação Vivendas — tratado como um pseudo-condomínio fora do
+  // registro de condomínios, na mesma rotina (cron semanal quando sem
+  // filtro; webhook seletivo quando o filtro bate com o pseudo-slug).
+  if (!filtroCondominio || filtroCondominio === PLANO_ACAO_VIVENDAS_ID) {
+    try {
+      console.log("Buscando Plano de Ação Vivendas...");
+      await capturarPlanoDeAcaoVivendas(token, meta, notionTokens, semana);
+      processados++;
+    } catch (err) {
+      erros.push(`Plano de Ação Vivendas: ${err.message}`);
+      console.log(`  ❌ Plano de Ação Vivendas: ${err.message}`);
+    }
+  }
+
+  console.log(`\n✅ ${processados} item(ns) processado(s).`);
   if (filtroCondominio && processados === 0) {
     console.log(`⚠️  Filtro '${filtroCondominio}' não bateu com nenhuma linha da Configuração — nada foi processado.`);
     process.exitCode = 1;
