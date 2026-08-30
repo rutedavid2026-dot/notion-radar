@@ -42,15 +42,29 @@ const SPREADSHEET_ID_DEFAULT = "1fEkPgTf6oGYknWEP6zzi8eyBTpoDDQR0goJg1D_Wed0";
 // erro da resposta).
 const WEBHOOK_SHEET_NAME = "_webhook";
 const CELULA_VERIFICATION_TOKEN = `'${WEBHOOK_SHEET_NAME}'!A1`;
-const CELULA_ULTIMO_DISPARO = `'${WEBHOOK_SHEET_NAME}'!A2`;
+// Tabela de debounce por condomínio (linha 2 em diante): coluna A = chave
+// (slug do condomínio, ou "*" pra disparo sem filtro), coluna B = timestamp
+// do último disparo. Precisa ser por chave, não uma célula única — senão um
+// evento do condomínio A bloquearia por 2 min a captura do condomínio B
+// (debounce global não faz sentido depois que a captura passou a ser
+// seletiva).
+const RANGE_DEBOUNCE = `'${WEBHOOK_SHEET_NAME}'!A2:B`;
+const CHAVE_DEBOUNCE_TODOS = "*";
 
 // Síndica editando várias linhas em sequência dispara um evento por edição —
-// sem debounce, cada uma dispara uma captura completa (29 condomínios) em
-// paralelo, arriscando estourar a cota de escrita do Sheets API de novo (ver
-// histórico do projeto, 2026-08-24). Só permite 1 disparo a cada 2 minutos;
-// eventos dentro da janela são ignorados (a próxima captura já pega a
-// mudança).
+// sem debounce, cada uma dispara uma captura completa em paralelo,
+// arriscando estourar a cota de escrita do Sheets API de novo (ver histórico
+// do projeto, 2026-08-24). Só permite 1 disparo a cada 2 minutos por
+// condomínio; eventos dentro da janela são ignorados (a próxima captura já
+// pega a mudança).
 const JANELA_DEBOUNCE_MS = 2 * 60 * 1000;
+
+// Versão da API do Notion que suporta o objeto "data_source" (modelo mais
+// novo de databases com múltiplas fontes de dados) — diferente da versão
+// 2022-06-28 usada no resto do projeto (notion.functions.ts,
+// apps-script/CapturaSemanal.gs), que não conhece esse objeto. Só usada
+// nesta função isolada de resolução de entidade do evento.
+const NOTION_VERSION_DATA_SOURCE = "2026-03-11";
 
 // ---------- Google Sheets API (Service Account, Web Crypto — precisa rodar
 // em edge runtime, por isso RSASSA-PKCS1-v1_5 via crypto.subtle em vez de
@@ -155,6 +169,105 @@ async function escreverCelula(token: string, spreadsheetId: string, celula: stri
   }
 }
 
+async function lerTabelaDebounce(token: string, spreadsheetId: string): Promise<string[][]> {
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(RANGE_DEBOUNCE)}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) return []; // aba ainda não existe — trata como tabela vazia
+  const json = (await res.json()) as { values?: string[][] };
+  return json.values ?? [];
+}
+
+async function lerUltimoDisparo(token: string, spreadsheetId: string, chave: string): Promise<number> {
+  const linhas = await lerTabelaDebounce(token, spreadsheetId);
+  const linha = linhas.find((r) => r[0] === chave);
+  return linha ? Number(linha[1]) || 0 : 0;
+}
+
+async function escreverUltimoDisparo(token: string, spreadsheetId: string, chave: string, timestamp: number): Promise<void> {
+  await garantirAbaWebhook(token, spreadsheetId);
+  const linhas = await lerTabelaDebounce(token, spreadsheetId);
+  const idx = linhas.findIndex((r) => r[0] === chave);
+  const numeroLinha = idx === -1 ? linhas.length + 2 : idx + 2; // dados começam na linha 2
+  const celula = `'${WEBHOOK_SHEET_NAME}'!A${numeroLinha}:B${numeroLinha}`;
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(celula)}?valueInputOption=RAW`,
+    {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[chave, String(timestamp)]] }),
+    },
+  );
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Sheets API (escreverUltimoDisparo ${chave}): ${res.status} ${detail}`);
+  }
+}
+
+// ---------- Resolução do condomínio a partir do evento da Notion ----------
+
+function getNotionTokens(): string[] {
+  return [process.env.NOTION_API_KEY, process.env.NOTION_API_KEY_2, process.env.NOTION_API_KEY_3].filter(
+    (t): t is string => !!t,
+  );
+}
+
+// O evento traz `entity: { id, type }`, onde type é "page"/"database"/
+// "data_source"/etc. Só sabemos resolver os dois últimos pra um database_id
+// (que é o que a planilha de configuração guarda, extraído da URL). Pra
+// "data_source" (modelo novo, uma database pode ter várias fontes de dados),
+// precisa buscar o database_id pai via API — usando uma versão mais nova do
+// Notion-Version só nessa chamada isolada.
+async function resolverDatabaseId(entity: { id?: string; type?: string } | undefined): Promise<string | null> {
+  if (!entity?.id) return null;
+  if (entity.type === "database") return entity.id;
+  if (entity.type !== "data_source") return null;
+
+  for (const token of getNotionTokens()) {
+    try {
+      const res = await fetch(`https://api.notion.com/v1/data_sources/${entity.id}`, {
+        headers: { Authorization: `Bearer ${token}`, "Notion-Version": NOTION_VERSION_DATA_SOURCE },
+      });
+      if (!res.ok) continue;
+      const json = (await res.json()) as { parent?: { type?: string; database_id?: string } };
+      if (json.parent?.type === "database_id" && json.parent.database_id) {
+        return json.parent.database_id;
+      }
+    } catch {
+      // tenta o próximo token (workspaces diferentes, mesmo padrão de
+      // buscarDemandasComTokens em apps-script/CapturaSemanal.gs)
+    }
+  }
+  return null;
+}
+
+function extrairDatabaseId(url: string): string | null {
+  const m = url.match(/[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}/);
+  return m ? m[0].replace(/-/g, "") : null;
+}
+
+async function encontrarSlugPorDatabaseId(
+  sheetsToken: string,
+  spreadsheetId: string,
+  databaseId: string,
+): Promise<string | null> {
+  const alvo = databaseId.replace(/-/g, "").toLowerCase();
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent("'_configuracao'!A2:D")}`,
+    { headers: { Authorization: `Bearer ${sheetsToken}` } },
+  );
+  if (!res.ok) return null;
+  const json = (await res.json()) as { values?: string[][] };
+  for (const row of json.values ?? []) {
+    const url = String(row[1] || "");
+    const id = String(row[3] || "").trim();
+    const dbId = extrairDatabaseId(url);
+    if (dbId && id && dbId.toLowerCase() === alvo) return id;
+  }
+  return null;
+}
+
 // ---------- Assinatura do Notion (HMAC-SHA256, header x-notion-signature) ----------
 
 async function verificarAssinatura(rawBody: string, assinaturaRecebida: string | null, segredo: string) {
@@ -180,12 +293,16 @@ async function verificarAssinatura(rawBody: string, assinaturaRecebida: string |
   return diff === 0;
 }
 
-async function dispararCaptura(spreadsheetId: string, sheetsToken: string | null): Promise<{ disparado: boolean; motivo: string }> {
+async function dispararCaptura(
+  spreadsheetId: string,
+  sheetsToken: string | null,
+  condominioSlug: string | null,
+): Promise<{ disparado: boolean; motivo: string }> {
+  const chaveDebounce = condominioSlug || CHAVE_DEBOUNCE_TODOS;
   if (sheetsToken) {
-    const ultimoDisparoRaw = await lerCelula(sheetsToken, spreadsheetId, CELULA_ULTIMO_DISPARO);
-    const ultimoDisparoEm = ultimoDisparoRaw ? Number(ultimoDisparoRaw) : 0;
+    const ultimoDisparoEm = await lerUltimoDisparo(sheetsToken, spreadsheetId, chaveDebounce);
     if (Date.now() - ultimoDisparoEm < JANELA_DEBOUNCE_MS) {
-      return { disparado: false, motivo: "debounce (evento recente, próxima captura já cobre)" };
+      return { disparado: false, motivo: `debounce ('${chaveDebounce}': evento recente, próxima captura já cobre)` };
     }
   }
 
@@ -206,7 +323,7 @@ async function dispararCaptura(spreadsheetId: string, sheetsToken: string | null
         // "forbidden by administrative rules" (confirmado em 2026-08-25).
         "User-Agent": "gestao-em-movimento-webhook",
       },
-      body: JSON.stringify({ ref: "main" }),
+      body: JSON.stringify({ ref: "main", inputs: condominioSlug ? { condominio: condominioSlug } : {} }),
     },
   );
   if (!res.ok) {
@@ -214,9 +331,14 @@ async function dispararCaptura(spreadsheetId: string, sheetsToken: string | null
     return { disparado: false, motivo: `GitHub API: ${res.status} ${detail}` };
   }
   if (sheetsToken) {
-    await escreverCelula(sheetsToken, spreadsheetId, CELULA_ULTIMO_DISPARO, String(Date.now()));
+    await escreverUltimoDisparo(sheetsToken, spreadsheetId, chaveDebounce, Date.now());
   }
-  return { disparado: true, motivo: "workflow_dispatch enviado" };
+  return {
+    disparado: true,
+    motivo: condominioSlug
+      ? `workflow_dispatch enviado (condomínio: ${condominioSlug})`
+      : "workflow_dispatch enviado (todos os condomínios)",
+  };
 }
 
 export const Route = createFileRoute("/webhooks/notion")({
@@ -283,7 +405,28 @@ export const Route = createFileRoute("/webhooks/notion")({
         }
 
         const sheetsToken = serviceAccount ? await getAccessToken(serviceAccount) : null;
-        const resultado = await dispararCaptura(spreadsheetId, sheetsToken);
+
+        // Resolve qual condomínio mudou, pra reprocessar só ele em vez dos 29
+        // — best-effort: qualquer falha aqui (evento de tipo não mapeado,
+        // Notion API fora do ar, condomínio não encontrado na planilha) cai
+        // pra captura completa, nunca perde o evento por causa da otimização.
+        let condominioSlug: string | null = null;
+        if (sheetsToken) {
+          try {
+            const entity = json.entity as { id?: string; type?: string } | undefined;
+            const databaseId = await resolverDatabaseId(entity);
+            if (databaseId) {
+              condominioSlug = await encontrarSlugPorDatabaseId(sheetsToken, spreadsheetId, databaseId);
+            }
+            if (entity && !condominioSlug) {
+              console.log(`Notion webhook: não resolveu condomínio pra entity ${JSON.stringify(entity)} — captura completa.`);
+            }
+          } catch (err) {
+            console.warn("Notion webhook: falha ao resolver condomínio do evento, seguindo com captura completa:", err);
+          }
+        }
+
+        const resultado = await dispararCaptura(spreadsheetId, sheetsToken, condominioSlug);
         console.log("Notion webhook: evento recebido —", resultado.motivo);
         return new Response(JSON.stringify(resultado), {
           status: 200,
