@@ -5,7 +5,12 @@ on:
     # Toda sexta às 11:00 UTC (8h no horário de Brasília) — mesmo horário que
     # o trigger do Apps Script (capturarTodasFotografias) já usava.
     - cron: "0 11 * * 5"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      condominio:
+        description: "Slug/id ou nome exato (opcional) — processa só esse condomínio. Vazio = todos."
+        required: false
+        type: string
 
 jobs:
   capturar:
@@ -20,3 +25,4 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           NOTION_API_KEY_2: ${{ secrets.NOTION_API_KEY_2 }}
+          CONDOMINIO_FILTRO: ${{ inputs.condominio }}

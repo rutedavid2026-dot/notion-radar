@@ -455,6 +455,15 @@ async function main() {
   const semana = semanaAtual();
   console.log(`Semana atual: #${semana.n} (${semana.start} a ${semana.end})`);
 
+  // Filtro opcional pra reprocessar só 1 condomínio (por slug/id da coluna D
+  // ou nome exato) — usado pelo teste de captura seletiva via webhook, em vez
+  // de sempre reprocessar os 29 condomínios a cada disparo. Sem essa env var,
+  // comportamento é o mesmo de sempre (todos os condomínios).
+  const filtroCondominio = process.env.CONDOMINIO_FILTRO?.trim().toLowerCase() || null;
+  if (filtroCondominio) {
+    console.log(`Filtro ativo: processando só o condomínio '${filtroCondominio}'.`);
+  }
+
   const erros = [];
   let processados = 0;
 
@@ -464,6 +473,10 @@ async function main() {
     const gid = row[2];
     const id = String(row[3] || "").trim();
     if (!condominio || !url || !gid) continue;
+
+    if (filtroCondominio && id.toLowerCase() !== filtroCondominio && condominio.toLowerCase() !== filtroCondominio) {
+      continue;
+    }
 
     const dbId = url.match(/[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}/)?.[0]?.replace(/-/g, "");
     if (!dbId) continue;
@@ -542,6 +555,10 @@ async function main() {
   }
 
   console.log(`\n✅ ${processados} condomínio(s) processado(s).`);
+  if (filtroCondominio && processados === 0) {
+    console.log(`⚠️  Filtro '${filtroCondominio}' não bateu com nenhuma linha da Configuração — nada foi processado.`);
+    process.exitCode = 1;
+  }
   if (erros.length > 0) {
     console.log(`❌ ${erros.length} falha(s):`);
     erros.forEach((e) => console.log(" - " + e));
